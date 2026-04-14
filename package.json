@@ -1,0 +1,12 @@
+{
+  "name": "coffee-journal",
+  "version": "1.0.0",
+  "description": "A shared coffee journal web app",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=14"
+  }
+}

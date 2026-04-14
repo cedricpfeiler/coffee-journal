@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coffee Journal</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F0E8;--surface:#FDFAF4;--surface2:#EDE8DC;
+  --border:#D4C9B0;--border2:#C2B89A;
+  --text:#1C1A14;--text2:#5C5646;--text3:#8A8070;
+  --green:#3B6D11;--green-light:#EAF3DE;--green-mid:#639922;
+  --amber:#BA7517;--amber-light:#FAEEDA;
+  --red:#A32D2D;--red-light:#FCEBEB;--blue:#185FA5;--blue-light:#E6F1FB;
+  --radius:12px;--radius-sm:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.screen{display:none;min-height:100vh}.screen.active{display:block}
+/* LOGIN */
+#screen-login{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;min-height:100vh}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2.5rem 2rem;width:100%;max-width:380px}
+.login-box h1{font-family:'Playfair Display',serif;font-size:32px;text-align:center;margin-bottom:4px}
+.login-tagline{font-size:14px;color:var(--text3);text-align:center;margin-bottom:2rem;font-weight:300}
+.login-box input{width:100%;padding:11px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg);font-family:'DM Sans',sans-serif;font-size:15px;color:var(--text);outline:none;margin-bottom:10px}
+.login-box input:focus{border-color:var(--border2)}
+.login-btn{width:100%;background:var(--green);color:#EAF3DE;border:none;border-radius:var(--radius-sm);padding:11px;font-size:15px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .15s}
+.login-btn:hover{background:#27500A}
+.login-err{font-size:13px;color:var(--red);text-align:center;margin-top:8px;min-height:18px}
+.acct-row{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--radius-sm);cursor:pointer;transition:background .12s}
+.acct-row:hover{background:var(--surface2)}
+.acct-name{font-size:14px;font-weight:500}.acct-count{font-size:12px;color:var(--text3);margin-left:auto}
+/* TOP NAV */
+.topnav{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem 0;max-width:780px;margin:0 auto;gap:12px}
+.topnav-title{font-family:'Playfair Display',serif;font-size:16px;font-weight:500;color:var(--text2)}
+.topnav-right{position:relative;display:flex;align-items:center;gap:8px}
+.user-chip{display:flex;align-items:center;gap:7px;padding:5px 11px 5px 6px;background:var(--surface);border:1px solid var(--border);border-radius:999px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;user-select:none}
+.user-chip:hover{border-color:var(--border2)}
+/* DROPDOWN */
+.user-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);min-width:230px;box-shadow:0 4px 24px rgba(0,0,0,.08);z-index:500;padding:0.75rem;display:none}
+.user-dropdown.open{display:block}
+.ud-header{display:flex;align-items:center;gap:10px;padding:.5rem .25rem .75rem;border-bottom:1px solid var(--border);margin-bottom:.75rem}
+.ud-name{font-weight:500;font-size:14px}.ud-count{font-size:12px;color:var(--text3)}
+.ud-section-label{font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:.06em;padding:0 .25rem;margin-bottom:6px}
+.ud-curr-row{display:flex;gap:5px;padding:0 .25rem;margin-bottom:.5rem}
+.curr-btn{padding:5px 13px;border-radius:999px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;white-space:nowrap;transition:all .12s}
+.curr-btn.active{background:var(--amber-light);border-color:var(--amber);color:var(--amber)}
+.rate-note{font-size:11px;color:var(--text3);padding:0 .25rem;margin-bottom:.75rem}
+.ud-btn{width:100%;text-align:left;background:none;border:1px solid var(--border);border-radius:999px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text2);padding:7px 14px;cursor:pointer;display:block;margin-bottom:6px;transition:all .12s}
+.ud-btn:hover{background:var(--surface2);border-color:var(--border2);color:var(--text)}
+.ud-divider{height:1px;background:var(--border);margin:.5rem 0}
+.ud-delete{background:none;border:none;font-size:12px;color:var(--red);opacity:.45;cursor:pointer;font-family:'DM Sans',sans-serif;padding:4px 6px;display:block;width:100%;text-align:right}
+.ud-delete:hover{opacity:1;text-decoration:underline}
+/* APP */
+.app{max-width:780px;margin:0 auto;padding:1.25rem 1.25rem 5rem}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;margin-top:2rem}
+.section-head h2{font-family:'Playfair Display',serif;font-size:18px;font-weight:500}
+.page-title{font-family:'Playfair Display',serif;font-size:26px;font-weight:500}
+.page-sub{font-size:13px;color:var(--text3);font-weight:300;margin-top:2px}
+.add-btn{background:var(--green);color:#EAF3DE;border:none;border-radius:var(--radius-sm);padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.add-btn:hover{background:#27500A}
+/* COMMUNITY */
+.community-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:1rem}
+.community-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;text-align:center;cursor:pointer;transition:border-color .15s,transform .12s}
+.community-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+.cc-name{font-size:13px;font-weight:500;margin-top:6px}.cc-count{font-size:11px;color:var(--text3);margin-top:2px}
+/* CONTROLS */
+.controls{margin-bottom:1.25rem}
+.search-wrap{position:relative;margin-bottom:10px}
+.search-wrap input{width:100%;padding:9px 14px 9px 38px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text);outline:none}
+.search-wrap input:focus{border-color:var(--border2)}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none}
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.filter-label{font-size:12px;color:var(--text3);font-weight:500}
+.filter-sep{width:1px;height:18px;background:var(--border2);margin:0 2px;flex-shrink:0}
+.pill{font-size:12px;padding:4px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .12s;white-space:nowrap}
+.pill:hover{border-color:var(--border2)}.pill.active{background:var(--green-light);border-color:var(--green-mid);color:var(--green)}
+/* COFFEE GRID + DECK */
+.coffee-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:24px}
+/* Deck: shadows use margin trick so card height is always natural */
+.deck-outer{position:relative;cursor:pointer}
+.deck-outer:hover .deck-shadow-el{transform:translateY(-2px)}
+.deck-outer:hover .card{border-color:var(--border2);transform:translateY(-2px)}
+.deck-shadow-el{position:absolute;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);transition:transform .15s;pointer-events:none}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color .15s,transform .15s;position:relative}
+.card.solo{cursor:pointer}.card.solo:hover{border-color:var(--border2);transform:translateY(-2px)}
+.card-img{width:100%;height:120px;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.card-img img{width:100%;height:100%;object-fit:contain;object-position:center}.card-img-placeholder{font-size:36px;opacity:.3}
+.type-badge{position:absolute;top:7px;right:7px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;background:rgba(253,250,244,.92);color:var(--text2);border:1px solid var(--border)}
+.shared-badge{position:absolute;top:7px;left:7px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;background:var(--blue-light);color:var(--blue);border:1px solid #B5D4F4}
+.deck-count-badge{position:absolute;bottom:7px;right:7px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;background:var(--amber);color:#fff}
+.card-body{padding:11px 13px}
+.card-name{font-family:'Playfair Display',serif;font-size:14px;font-weight:500;color:var(--text);margin-bottom:2px;line-height:1.3}
+.card-origin{font-size:12px;color:var(--text3);margin-bottom:5px}
+.card-stars{font-size:12px;color:var(--amber);margin-bottom:4px;letter-spacing:1px}
+.card-price{font-size:12px;color:var(--text3);margin-bottom:5px}.card-price span{color:var(--amber);font-weight:500}
+.card-tags{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px}
+.mini-tag{font-size:11px;padding:2px 7px;border-radius:999px;background:var(--green-light);color:var(--green)}
+.also-has{font-size:12px;color:var(--blue);background:var(--blue-light);border:1px solid #B5D4F4;border-radius:6px;padding:5px 9px;margin-top:5px}
+.also-has strong{font-weight:500}
+.empty{grid-column:1/-1;text-align:center;padding:3rem 1rem;color:var(--text3);font-size:14px}
+.empty-icon{font-size:36px;margin-bottom:8px;opacity:.4}
+/* PROFILE POPUP */
+.overlay-bg{display:none;position:fixed;inset:0;background:rgba(20,18,12,.55);z-index:250;align-items:center;justify-content:center;padding:2rem 1rem}
+.overlay-bg.open{display:flex}
+.profile-modal{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:700px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+.profile-modal-header{display:flex;align-items:center;justify-content:space-between;padding:1.1rem 1.5rem;border-bottom:1px solid var(--border);flex-shrink:0;gap:12px;flex-wrap:wrap}
+.profile-modal-left{display:flex;align-items:center;gap:12px}
+.profile-modal-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:500}
+.profile-modal-sub{font-size:12px;color:var(--text3);margin-top:1px}
+.profile-modal-right{display:flex;align-items:center;gap:8px}
+.profile-modal-controls{display:flex;align-items:center;gap:8px;padding:.65rem 1.5rem;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.profile-modal-body{overflow-y:auto;padding:1.25rem 1.5rem;flex:1}
+.close-btn{background:none;border:none;font-size:18px;cursor:pointer;color:var(--text3);padding:2px 6px;border-radius:4px;line-height:1}
+.close-btn:hover{background:var(--surface2)}
+/* DECK MODAL */
+.deck-modal-bg{display:none;position:fixed;inset:0;background:rgba(20,18,12,.5);z-index:300;align-items:center;justify-content:center;padding:1rem}
+.deck-modal-bg.open{display:flex}
+.deck-modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:460px;max-height:92vh;overflow-y:auto;display:flex;flex-direction:column}
+.deck-modal-header{display:flex;align-items:flex-start;justify-content:space-between;padding:1.25rem 1.5rem 0}
+.deck-coffeename{font-family:'Playfair Display',serif;font-size:20px;font-weight:500;line-height:1.2;flex:1}
+.deck-origin-line{font-size:13px;color:var(--text3);margin-top:3px}
+.deck-hero{width:100%;height:200px;object-fit:contain;object-position:center;margin-top:1rem;background:var(--surface2)}
+.deck-hero-ph{height:50px;display:flex;align-items:center;justify-content:center;font-size:36px;opacity:.2;margin-top:.5rem}
+.deck-nav-strip{display:flex;align-items:center;gap:10px;padding:.65rem 1.5rem;border-bottom:1px solid var(--border)}
+.deck-nav-btn{background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 12px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--text2)}
+.deck-nav-btn:hover:not(:disabled){background:var(--surface2)}.deck-nav-btn:disabled{opacity:.3;cursor:default}
+.deck-counter{font-size:13px;color:var(--text3);flex:1;text-align:center}
+.deck-body{padding:1.25rem 1.5rem}
+.deck-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem}
+.deck-chip{font-size:12px;padding:4px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface2);color:var(--text2)}
+.deck-chip.amber{background:var(--amber-light);border-color:#FAC775;color:var(--amber)}
+.deck-chip.green{background:var(--green-light);border-color:var(--green-mid);color:var(--green)}
+.deck-stars{font-size:18px;color:var(--amber);letter-spacing:2px;margin-bottom:1rem}
+.deck-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem}
+.deck-cell{background:var(--surface2);border-radius:var(--radius-sm);padding:10px 12px}
+.deck-cell-label{font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.deck-cell-val{font-size:14px;font-weight:500;color:var(--text)}
+.deck-notes-block{background:var(--surface2);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:8px}
+.deck-notes-label{font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.deck-notes-text{font-size:13px;color:var(--text2);line-height:1.6;font-style:italic}
+.deck-date{font-size:12px;color:var(--text3);text-align:right;margin-top:4px}
+.deck-footer{display:flex;gap:8px;padding:1rem 1.5rem;border-top:1px solid var(--border);justify-content:space-between;align-items:center;flex-shrink:0}
+.deck-del-btn{background:none;border:none;color:var(--red);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif}
+.deck-del-btn:hover{text-decoration:underline}
+.deck-edit-btn{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 14px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif}
+.deck-add-btn{background:var(--green);color:#EAF3DE;border:none;border-radius:var(--radius-sm);padding:7px 14px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif}
+/* ADD/EDIT MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(20,18,12,.5);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.75rem;width:100%;max-width:460px;max-height:92vh;overflow-y:auto}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+.modal-header h2{font-family:'Playfair Display',serif;font-size:20px;font-weight:500}
+.field{margin-bottom:12px}
+.field label{font-size:13px;color:var(--text2);display:block;margin-bottom:4px;font-weight:500}
+.field input,.field textarea,.field select{width:100%;padding:9px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg);font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text);outline:none;-webkit-appearance:none;appearance:none}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--border2)}
+.field textarea{height:68px;resize:vertical;line-height:1.5}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238A8070' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.price-row{display:flex;align-items:center;gap:8px}
+.price-curr-toggle{display:flex;gap:4px;flex-shrink:0}
+.price-curr-btn{padding:7px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;transition:all .12s}
+.price-curr-btn.active{background:var(--amber-light);border-color:var(--amber);color:var(--amber)}
+.price-row input{flex:1;min-width:0}
+/* price calculator */
+.price-field-wrap{position:relative}
+.calc-icon{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;cursor:pointer;opacity:0;transition:opacity .15s;color:var(--text3);user-select:none}
+.price-field-wrap:hover .calc-icon{opacity:1}
+.price-field-wrap input{padding-right:32px}
+.calc-popup{display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-top:6px;gap:8px;flex-direction:column}
+.calc-popup.open{display:flex}
+.calc-row{display:flex;gap:6px;align-items:center}
+.calc-row input{flex:1;padding:7px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);outline:none}
+.calc-row input:focus{border-color:var(--border2)}
+.calc-row label{font-size:12px;color:var(--text3);white-space:nowrap;min-width:60px}
+.calc-apply{background:var(--green);color:#EAF3DE;border:none;border-radius:var(--radius-sm);padding:6px 14px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.sec-div{font-size:11px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin:16px 0 10px;padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.private-badge{font-size:10px;padding:2px 7px;border-radius:999px;background:var(--amber-light);color:var(--amber);border:1px solid #FAC775;text-transform:none;letter-spacing:0;font-weight:500}
+.photo-label{display:block;width:100%;padding:14px;border:1.5px dashed var(--border2);border-radius:var(--radius-sm);text-align:center;cursor:pointer;color:var(--text3);font-size:13px;background:var(--bg);transition:all .12s}
+.photo-label:hover{border-color:var(--green-mid);color:var(--green)}
+.photo-preview{width:100%;height:100px;object-fit:cover;border-radius:var(--radius-sm);margin-top:7px;display:none;border:1px solid var(--border)}
+.stars-row{display:flex;gap:4px}
+.star{font-size:22px;cursor:pointer;color:var(--border2);transition:color .1s;line-height:1;user-select:none}
+.star.on{color:var(--amber)}
+/* autocomplete dropdown */
+.autocomplete-wrap{position:relative}
+.autocomplete-list{position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);z-index:100;max-height:160px;overflow-y:auto;display:none;margin-top:3px;box-shadow:0 4px 12px rgba(0,0,0,.06)}
+.autocomplete-list.open{display:block}
+.ac-item{padding:8px 12px;font-size:13px;cursor:pointer;color:var(--text2)}
+.ac-item:hover{background:var(--surface2);color:var(--text)}
+/* tags */
+.tag-input-row{display:flex;gap:6px}
+.tag-input-row input{flex:1}
+.tag-add-btn{background:var(--green-light);color:var(--green);border:1px solid var(--green-mid);border-radius:var(--radius-sm);padding:0 13px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif}
+.selected-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.sel-tag{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--green-light);color:var(--green);cursor:pointer;border:1px solid transparent}
+.sel-tag:hover{background:var(--red-light);color:var(--red);border-color:#F7C1C1}
+/* tag groups (AI-powered filter) */
+.tag-group-wrap{margin-top:8px}
+.tag-group{margin-bottom:8px}
+.tag-group-label{font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.tag-group-pills{display:flex;flex-wrap:wrap;gap:5px}
+.tg-pill{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;transition:all .12s}
+.tg-pill.active{background:var(--green-light);border-color:var(--green-mid);color:var(--green)}
+.tg-pill:hover{border-color:var(--border2)}
+.ai-grouping-bar{display:flex;align-items:center;gap:8px;margin:8px 0 4px}
+.ai-grouping-btn{font-size:12px;padding:4px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .12s}
+.ai-grouping-btn.active{background:var(--blue-light);border-color:#B5D4F4;color:var(--blue)}
+.ai-grouping-btn:hover{border-color:var(--border2)}
+.ai-loading{font-size:12px;color:var(--text3);display:none}
+/* modal bottom */
+.modal-actions{display:flex;gap:8px;margin-top:1.25rem;justify-content:space-between;align-items:center}
+.del-entry-btn{background:none;border:none;color:var(--red);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;padding:0}
+.del-entry-btn:hover{text-decoration:underline}
+.modal-right{display:flex;gap:8px;align-items:center}
+.cancel-btn{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif}
+.save-btn{background:var(--green);color:#EAF3DE;border:none;border-radius:var(--radius-sm);padding:8px 18px;font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif}
+.save-btn:hover{background:#27500A}
+.date-wrap input[type=date]{border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text3);outline:none;cursor:pointer;padding:4px 6px;border-radius:var(--radius-sm);transition:background .12s}
+.date-wrap input[type=date]:hover,.date-wrap input[type=date]:focus{background:var(--surface2);color:var(--text2)}
+.suggestion-box{background:var(--amber-light);border:1px solid #FAC775;border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;color:var(--text2);margin-top:6px;display:none}
+.suggestion-box strong{color:var(--amber);font-weight:500}
+.sug-options{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.sug-pill{font-size:12px;padding:3px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--border2);cursor:pointer;color:var(--text2);font-family:'DM Sans',sans-serif}
+.sug-pill:hover{background:var(--amber-light);border-color:var(--amber)}
+.toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--text);color:var(--surface);padding:10px 20px;border-radius:999px;font-size:14px;opacity:0;transition:all .3s;z-index:999;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="screen-login" class="screen active" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem">
+  <div class="login-box">
+    <h1>Coffee Journal</h1>
+    <p class="login-tagline">Your shared coffee community</p>
+    <input type="text" id="login-name" placeholder="Your name…" maxlength="30" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="off" autocorrect="off">
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Enter journal →</button>
+    <div class="login-err" id="login-err"></div>
+    <div id="existing-accounts"></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="screen-main" class="screen">
+  <div class="topnav">
+    <span class="topnav-title">Coffee Journal</span>
+    <div class="topnav-right">
+      <div class="user-chip" id="user-chip" onclick="toggleDropdown(event)">
+        <div id="nav-avatar"></div><span id="nav-name"></span>
+      </div>
+      <div class="user-dropdown" id="user-dropdown" onclick="event.stopPropagation()">
+        <div class="ud-header"><div id="dd-avatar"></div><div><div class="ud-name" id="dd-name"></div><div class="ud-count" id="dd-count"></div></div></div>
+        <div class="ud-section-label">Display currency</div>
+        <div class="ud-curr-row">
+          <button class="curr-btn active" id="curr-eur" onclick="setCurrency('EUR')">€ EUR</button>
+          <button class="curr-btn" id="curr-usd" onclick="setCurrency('USD')">$ USD</button>
+        </div>
+        <div class="rate-note" id="rate-note"></div>
+        <button class="ud-btn" onclick="closeDropdown();logout()">Log out</button>
+        <div class="ud-divider"></div>
+        <button class="ud-delete" onclick="confirmDeleteProfile()">delete account</button>
+      </div>
+    </div>
+  </div>
+  <div class="app">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:10px">
+      <div><div class="page-title">My coffees</div><div class="page-sub" id="main-sub"></div></div>
+      <button class="add-btn" onclick="openModal(null,null,false)">+ Add coffee</button>
+    </div>
+    <div class="controls">
+      <div class="search-wrap"><span class="search-icon">☕</span><input type="text" id="search" placeholder="Search coffees…" oninput="renderMyCoffees()"></div>
+      <div class="filter-row" id="filter-row">
+        <span class="filter-label">Filter:</span>
+        <span class="pill active" onclick="setFilter('all',this)">All</span>
+        <span class="pill" onclick="setFilter('type:Espresso',this)">Espresso</span>
+        <span class="pill" onclick="setFilter('type:Filter',this)">Filter</span>
+        <span class="filter-sep" style="width:1px;height:18px;background:var(--border2);margin:0 2px;flex-shrink:0;display:inline-block;align-self:center"></span>
+        <span class="pill" id="browse-flavours-btn" onclick="openTagGroups()">🌿 Browse flavours</span>
+      </div>
+    </div>
+    <div class="coffee-grid" id="my-grid"></div>
+    <div class="section-head"><h2>Community</h2></div>
+    <div class="community-grid" id="community-grid"><div style="color:var(--text3);font-size:14px"><span class="spinner"></span>Loading…</div></div>
+  </div>
+</div>
+
+<!-- PROFILE POPUP -->
+<div class="overlay-bg" id="profile-overlay" onclick="if(event.target===this)closeProfileModal()">
+  <div class="profile-modal" onclick="event.stopPropagation()">
+    <div class="profile-modal-header">
+      <div class="profile-modal-left"><div id="pm-avatar"></div><div><div class="profile-modal-title" id="pm-title"></div><div class="profile-modal-sub" id="pm-sub"></div></div></div>
+      <div class="profile-modal-right">
+        <div style="display:flex;gap:4px">
+          <button class="curr-btn active" id="curr-eur-p" onclick="setCurrency('EUR')">€</button>
+          <button class="curr-btn" id="curr-usd-p" onclick="setCurrency('USD')">$</button>
+        </div>
+        <button class="close-btn" onclick="closeProfileModal()">✕</button>
+      </div>
+    </div>
+    <div class="profile-modal-controls">
+      <span style="font-size:12px;color:var(--text3);font-weight:500">Sort:</span>
+      <span class="pill active" id="sort-rating" onclick="setProfileSort('rating',this)">★ Rating</span>
+      <span class="pill" id="sort-name" onclick="setProfileSort('name',this)">Name</span>
+      <div id="profile-tag-pills" style="display:contents"></div>
+    </div>
+    <div class="profile-modal-body"><div class="coffee-grid" id="profile-grid"></div></div>
+  </div>
+</div>
+
+<!-- DECK MODAL -->
+<div class="deck-modal-bg" id="deck-modal-bg" onclick="if(event.target===this)closeDeckModal()">
+  <div class="deck-modal" onclick="event.stopPropagation()">
+    <div class="deck-modal-header">
+      <div style="flex:1"><div class="deck-coffeename" id="deck-coffeename"></div><div class="deck-origin-line" id="deck-origin"></div></div>
+      <button class="close-btn" onclick="closeDeckModal()" style="margin-left:12px;flex-shrink:0">✕</button>
+    </div>
+    <div id="deck-hero-area"></div>
+    <div class="deck-nav-strip">
+      <button class="deck-nav-btn" id="deck-prev" onclick="deckNav(-1)">← Prev</button>
+      <span class="deck-counter" id="deck-counter"></span>
+      <button class="deck-nav-btn" id="deck-next" onclick="deckNav(1)">Next →</button>
+    </div>
+    <div class="deck-body" id="deck-body"></div>
+    <div class="deck-footer" id="deck-footer"></div>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header"><h2 id="modal-title">Add a coffee</h2><button class="close-btn" onclick="closeModal()">✕</button></div>
+    <!-- Photo: always shown -->
+    <div class="field">
+      <label>Photo</label>
+      <label class="photo-label" id="photo-label">📷 Tap to upload or take a photo
+        <input type="file" accept="image/*" capture="environment" style="display:none" id="photo-input" onchange="handlePhoto(event)">
+      </label>
+      <img id="photo-preview" class="photo-preview" alt="">
+    </div>
+    <!-- Coffee-level fields -->
+    <div id="coffee-level-section">
+      <div class="sec-div" id="coffee-sec-label">Coffee details</div>
+      <div class="field">
+        <label>Coffee name *</label>
+        <input type="text" id="f-name" placeholder="e.g. Yirgacheffe Natural" oninput="checkSuggestions()">
+        <div class="suggestion-box" id="suggestion-box">
+          <strong>Similar coffees in the community:</strong>
+          <div class="sug-options" id="sug-options"></div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Roaster / brand</label>
+          <div class="autocomplete-wrap">
+            <input type="text" id="f-roaster" placeholder="e.g. Tim Wendelboe" oninput="acInput('f-roaster','ac-roaster',allRoasters)" onblur="setTimeout(()=>closeAc('ac-roaster'),150)" autocomplete="off">
+            <div class="autocomplete-list" id="ac-roaster"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Country of origin</label>
+          <div class="autocomplete-wrap">
+            <input type="text" id="f-country" placeholder="e.g. Ethiopia" oninput="acInput('f-country','ac-country',allCountries)" onblur="setTimeout(()=>closeAc('ac-country'),150)" autocomplete="off">
+            <div class="autocomplete-list" id="ac-country"></div>
+          </div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Type</label>
+          <select id="f-type"><option value="">&#8212; select &#8212;</option><option>Espresso</option><option>Filter</option><option>Both</option><option>Moka pot</option><option>Cold brew</option><option>Other</option></select>
+        </div>
+        <div class="field"><label>Processing method</label>
+          <select id="f-process"><option value="">&#8212; select &#8212;</option><option>Washed</option><option>Natural</option><option>Anaerobic</option><option>Honey</option></select>
+        </div>
+      </div>
+    </div>
+    <!-- Entry-level fields -->
+    <div class="sec-div" id="entry-sec-label">This purchase</div>
+    <div class="field-row">
+      <div class="field">
+        <label>Price per 100g</label>
+        <div class="price-row">
+          <div class="price-curr-toggle">
+            <button class="price-curr-btn active" id="price-eur-btn" onclick="setPriceCurr('EUR')">€</button>
+            <button class="price-curr-btn" id="price-usd-btn" onclick="setPriceCurr('USD')">$</button>
+          </div>
+          <div class="price-field-wrap" style="flex:1">
+            <input type="text" id="f-price" placeholder="4.50">
+            <span class="calc-icon" onclick="toggleCalc()" title="Calculate from total cost">🗳️</span>
+          </div>
+        </div>
+        <div class="calc-popup" id="calc-popup">
+          <div class="calc-row"><label>Total cost</label><input type="number" id="calc-total" placeholder="0.00" step="0.01" min="0" oninput="runCalc()"></div>
+          <div class="calc-row"><label>Amount (g)</label><input type="number" id="calc-grams" placeholder="250" min="1" oninput="runCalc()"></div>
+          <div class="calc-row"><span id="calc-result" style="font-size:13px;color:var(--text3);flex:1"></span><button class="calc-apply" onclick="applyCalc()">Use this</button></div>
+        </div>
+      </div>
+      <div class="field"><label>Where I bought it</label><input type="text" id="f-place" placeholder="e.g. Espressobar Noord"></div>
+    </div>
+    <div class="sec-div">Grind settings <span class="private-badge">🔒 Only visible to you</span></div>
+    <div class="field-row">
+      <div class="field"><label>Grind size</label><input type="text" id="f-grind-size" placeholder="e.g. 18 / medium-fine"></div>
+      <div class="field"><label>Grind time (sec)</label><input type="text" id="f-grind-time" placeholder="e.g. 11,5"></div>
+    </div>
+    <div class="sec-div">Private notes <span class="private-badge">🔒 Only visible to you</span></div>
+    <div class="field"><textarea id="f-private-notes" placeholder="Personal notes, reminders, brew tips…"></textarea></div>
+    <div class="sec-div">Tasting notes</div>
+    <div class="field"><textarea id="f-notes" placeholder="e.g. Blueberry, jasmine, dark chocolate…"></textarea></div>
+    <div class="field"><label>Rating</label>
+      <div class="stars-row" id="stars">
+        <span class="star" data-v="1">★</span><span class="star" data-v="2">★</span><span class="star" data-v="3">★</span><span class="star" data-v="4">★</span><span class="star" data-v="5">★</span>
+      </div>
+    </div>
+    <div class="sec-div">Flavours</div>
+    <div class="field">
+      <div class="tag-input-row">
+        <div class="autocomplete-wrap" style="flex:1">
+          <input type="text" id="tag-input" placeholder="e.g. fruity, blueberry, hazelnut" oninput="acTagInput()" onblur="setTimeout(()=>closeAc('ac-tags'),150)" onkeydown="if(event.key==='Enter'){addTag();event.preventDefault()}">
+          <div class="autocomplete-list" id="ac-tags"></div>
+        </div>
+        <button class="tag-add-btn" onclick="addTag()">Add</button>
+      </div>
+      <div class="selected-tags" id="selected-tags"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="del-entry-btn" id="delete-btn" onclick="deleteEntry()" style="display:none">Delete entry</button>
+      <div class="modal-right">
+        <div class="date-wrap" title="Entry date"><input type="date" id="f-date"></div>
+        <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+        <button class="save-btn" onclick="saveCoffee()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAG GROUP MODAL (AI grouping for filter) -->
+<div class="modal-bg" id="taggroup-bg" onclick="if(event.target===this)closeTagGroups()" style="z-index:350">
+  <div class="modal" style="max-width:500px" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Browse by flavour</h2>
+      <button class="close-btn" onclick="closeTagGroups()">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:1rem">Select one or more flavours — shows coffees that have <em>any</em> of the selected. Click again to deselect.</p>
+    <div id="tag-group-content"></div>
+    <div style="margin-top:1rem;text-align:right">
+      <button class="cancel-btn" onclick="closeTagGroups()">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// STATE
+let currentUser=null,myData=null,community={};
+let activeFilter='all',profileSort='rating',profileTagFilter='all';
+let displayCurrency='EUR',priceCurrency='EUR',eurUsdRate=1.08;
+let editingCoffeeId=null,editingEntryIdx=null,isAddingEntry=false;
+let deckCoffeeId=null,deckEntryIdx=0,deckEditable=false;
+let photoData='',pendingTags=[],currentRating=0;
+let profileUserKey=null;
+let tagGroupCache=null; // AI-grouped tags cache
+
+// AVATAR
+const COLORS=['#3B6D11','#185FA5','#BA7517','#993556','#0F6E56','#533AB7','#993C1D'];
+function avatarColor(n){let h=0;for(let c of n)h=(h*31+c.charCodeAt(0))%COLORS.length;return COLORS[h];}
+function initials(n){return n.trim().split(/\s+/).map(w=>w[0].toUpperCase()).slice(0,2).join('');}
+function avatarEl(name,size=32,fs=13){
+  const bg=avatarColor(name),lum=parseInt(bg.slice(1,3),16)*.299+parseInt(bg.slice(3,5),16)*.587+parseInt(bg.slice(5,7),16)*.114,fg=lum>128?'#1C1A14':'#FDFAF4';
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;font-size:${fs}px;font-weight:500;color:${fg};flex-shrink:0">${initials(name)}</div>`;
+}
+
+// DATE: format ISO to dd/mm/yyyy
+function fmtDate(iso){if(!iso)return'';const[y,m,d]=iso.split('-');return`${d}/${m}/${y}`;}
+function toIso(dmy){if(!dmy)return'';if(dmy.includes('-'))return dmy;const[d,m,y]=dmy.split('/');return`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;}
+
+// CURRENCY
+async function fetchRate(){
+  try{const r=await fetch('https://open.er-api.com/v6/latest/EUR');if(!r.ok)throw 0;const d=await r.json();eurUsdRate=d.rates.USD;document.getElementById('rate-note').textContent=`1€ = $${eurUsdRate.toFixed(3)}`;}
+  catch(e){document.getElementById('rate-note').textContent=`1€ ≈ $${eurUsdRate.toFixed(2)}`;}
+}
+function setCurrency(c){
+  displayCurrency=c;
+  ['curr-eur','curr-usd','curr-eur-p','curr-usd-p'].forEach(id=>{const el=document.getElementById(id);if(!el)return;el.classList.toggle('active',id.includes('eur')?c==='EUR':c==='USD');});
+  renderMyCoffees();
+  if(document.getElementById('profile-overlay').classList.contains('open'))renderProfileGrid();
+}
+function setPriceCurr(c){priceCurrency=c;document.getElementById('price-eur-btn').classList.toggle('active',c==='EUR');document.getElementById('price-usd-btn').classList.toggle('active',c==='USD');}
+function formatPrice(priceStr,sc){
+  if(!priceStr)return null;const num=parseFloat(String(priceStr).replace(',','.'));if(isNaN(num))return null;
+  sc=sc||'EUR';let val=num;
+  if(sc==='EUR'&&displayCurrency==='USD')val=+(num*eurUsdRate).toFixed(2);
+  else if(sc==='USD'&&displayCurrency==='EUR')val=+(num/eurUsdRate).toFixed(2);
+  return`${displayCurrency==='EUR'?'€':'$'}${val.toFixed(2)}`;
+}
+
+// PRICE CALCULATOR
+function toggleCalc(){document.getElementById('calc-popup').classList.toggle('open');document.getElementById('calc-total').focus();}
+function runCalc(){
+  const t=parseFloat(document.getElementById('calc-total').value)||0;
+  const g=parseFloat(document.getElementById('calc-grams').value)||0;
+  const sym=priceCurrency==='EUR'?'€':'$';
+  if(t>0&&g>0){const per100=((t/g)*100).toFixed(2);document.getElementById('calc-result').textContent=`= ${sym}${per100} per 100g`;}
+  else document.getElementById('calc-result').textContent='';
+}
+function applyCalc(){
+  const t=parseFloat(document.getElementById('calc-total').value)||0;
+  const g=parseFloat(document.getElementById('calc-grams').value)||0;
+  if(t>0&&g>0){document.getElementById('f-price').value=((t/g)*100).toFixed(2);document.getElementById('calc-popup').classList.remove('open');}
+}
+
+// AUTOCOMPLETE HELPERS
+function allRoasters(){return[...new Set([...Object.values(community),...(myData?[myData]:[])]
+  .flatMap(a=>(a.coffees||[]).map(c=>c.roaster)).filter(Boolean))].sort();}
+function allCountries(){return[...new Set([...Object.values(community),...(myData?[myData]:[])]
+  .flatMap(a=>(a.coffees||[]).map(c=>c.country)).filter(Boolean))].sort();}
+function allKnownTags(){return[...new Set([...Object.values(community),...(myData?[myData]:[])]
+  .flatMap(a=>(a.coffees||[]).flatMap(c=>c.tags||[])))].sort();}
+
+function acInput(inputId,listId,sourceFn){
+  const val=document.getElementById(inputId).value.trim().toLowerCase();
+  const list=document.getElementById(listId);
+  if(!val){list.classList.remove('open');return;}
+  const matches=sourceFn().filter(s=>s.toLowerCase().includes(val)&&s.toLowerCase()!==val).slice(0,6);
+  if(!matches.length){list.classList.remove('open');return;}
+  list.innerHTML=matches.map(s=>`<div class="ac-item" onmousedown="pickAc('${inputId}','${listId}','${s.replace(/'/g,"\\'")}')">${s}</div>`).join('');
+  list.classList.add('open');
+}
+function acTagInput(){
+  const val=document.getElementById('tag-input').value.trim().toLowerCase();
+  const list=document.getElementById('ac-tags');
+  if(!val){list.classList.remove('open');return;}
+  const matches=allKnownTags().filter(t=>t.includes(val)&&!pendingTags.includes(t)).slice(0,6);
+  if(!matches.length){list.classList.remove('open');return;}
+  list.innerHTML=matches.map(t=>`<div class="ac-item" onmousedown="pickTag('${t.replace(/'/g,"\\'")}')">${t}</div>`).join('');
+  list.classList.add('open');
+}
+function pickAc(inputId,listId,val){document.getElementById(inputId).value=val;closeAc(listId);}
+function pickTag(t){pendingTags=[...new Set([...pendingTags,t])];renderSelectedTags();document.getElementById('tag-input').value='';closeAc('ac-tags');}
+function closeAc(id){const el=document.getElementById(id);if(el)el.classList.remove('open');}
+
+// DROPDOWN
+function toggleDropdown(e){e.stopPropagation();const dd=document.getElementById('user-dropdown');const opening=!dd.classList.contains('open');closeDropdown();if(opening&&currentUser){document.getElementById('dd-avatar').innerHTML=avatarEl(currentUser.name,32,13);document.getElementById('dd-name').textContent=currentUser.name;document.getElementById('dd-count').textContent=((myData&&myData.coffees)||[]).length+' coffees';dd.classList.add('open');}}
+function closeDropdown(){document.getElementById('user-dropdown').classList.remove('open');}
+document.addEventListener('click',()=>closeDropdown());
+
+// TOAST
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+// API
+async function api(method,path,body){
+  const opts={method,headers:{'Content-Type':'application/json'}};if(body)opts.body=JSON.stringify(body);
+  const r=await fetch('/api'+path,opts);if(!r.ok)throw new Error(await r.text());return r.json();
+}
+
+// DATA MODEL
+function migrateCoffee(c){
+  if(c.entries)return c;
+  return{id:c.id,name:c.name,roaster:c.roaster||'',country:c.country||'',type:c.type||'',process:c.process||'',tags:c.tags||[],photo:c.photo||'',
+    entries:[{idx:0,place:c.place||'',price:c.price||'',priceCurrency:'EUR',grindSize:c.grindSize||'',grindTime:c.grindTime||'',privateNotes:'',notes:c.notes||'',rating:c.rating||0,date:c.date||''}]};
+}
+function getLatestEntry(c){return c.entries[c.entries.length-1];}
+function getBestRating(c){return c.entries.length?Math.max(...c.entries.map(e=>e.rating||0)):0;}
+
+// LOGIN
+async function loadExistingAccounts(){
+  try{const comm=await api('GET','/community');const keys=Object.keys(comm);const el=document.getElementById('existing-accounts');
+    if(!keys.length){el.innerHTML='';return;}
+    el.innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin:1.5rem 0 1rem;color:var(--text3);font-size:13px"><div style="flex:1;height:1px;background:var(--border)"></div>or pick an account<div style="flex:1;height:1px;background:var(--border)"></div></div>`
+      +keys.map(k=>{const a=comm[k];return`<div class="acct-row" onclick="setLoginName('${a.name.replace(/'/g,"\\'")}')">${avatarEl(a.name)}<span class="acct-name">${a.name}</span><span class="acct-count">${a.coffees.length} coffee${a.coffees.length!==1?'s':''}</span></div>`;}).join('');
+  }catch(e){}
+}
+function setLoginName(n){document.getElementById('login-name').value=n;doLogin();}
+async function doLogin(){
+  const name=document.getElementById('login-name').value.trim();
+  if(!name){document.getElementById('login-err').textContent='Please enter your name.';return;}
+  const btn=document.getElementById('login-btn');btn.textContent='Loading…';btn.disabled=true;
+  document.getElementById('login-err').textContent='';
+  try{const user=await api('POST','/login',{name});currentUser=user;document.getElementById('nav-avatar').innerHTML=avatarEl(user.name,22,10);document.getElementById('nav-name').textContent=user.name;await refreshData();showScreen('screen-main');renderMain();}
+  catch(e){document.getElementById('login-err').textContent='Error: '+e.message;}
+  finally{btn.textContent='Enter journal →';btn.disabled=false;}
+}
+function logout(){currentUser=null;myData=null;community={};tagGroupCache=null;activeFlavours=[];document.getElementById('login-name').value='';document.getElementById('login-err').textContent='';loadExistingAccounts();showScreen('screen-login');}
+async function confirmDeleteProfile(){
+  closeDropdown();if(!confirm(`Delete your account "${currentUser.name}"? All your coffees will be permanently removed.`))return;
+  const typed=prompt('Type your name exactly to confirm:');if(typed!==currentUser.name){alert('Name did not match.');return;}
+  try{await api('DELETE',`/account/${currentUser.key}`);logout();toast('Account deleted');}catch(e){alert('Delete failed: '+e.message);}
+}
+async function refreshData(){
+  const[raw,comm]=await Promise.all([api('GET',`/account/${currentUser.key}`),api('GET','/community')]);
+  raw.coffees=(raw.coffees||[]).map(migrateCoffee);myData=raw;community=comm;
+  Object.values(community).forEach(a=>{a.coffees=(a.coffees||[]).map(migrateCoffee);});
+  tagGroupCache=null; // invalidate on refresh
+}
+
+// SCREENS
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>{s.classList.remove('active');s.style.display='none';});
+  const el=document.getElementById(id);el.classList.add('active');el.style.display=(id==='screen-login')?'flex':'block';window.scrollTo(0,0);
+}
+
+// PROFILE POPUP
+function showProfile(key){
+  const a=community[key];if(!a)return;
+  profileUserKey=key;profileSort='rating';profileTagFilter='all';
+  document.getElementById('pm-avatar').innerHTML=avatarEl(a.name,40,15);
+  document.getElementById('pm-title').textContent=a.name+"'s coffees";
+  document.getElementById('pm-sub').textContent=a.coffees.length+' coffee'+(a.coffees.length!==1?'s':'');
+  renderProfileGrid();document.getElementById('profile-overlay').classList.add('open');
+}
+function closeProfileModal(){document.getElementById('profile-overlay').classList.remove('open');}
+function renderProfileGrid(){
+  const a=community[profileUserKey];if(!a)return;
+  const myNames=new Set((myData&&myData.coffees||[]).map(c=>c.name.toLowerCase()));
+  const allTags=[...new Set(a.coffees.flatMap(c=>c.tags||[]))].sort();
+  document.getElementById('profile-tag-pills').innerHTML=allTags.map(t=>`<span class="pill${profileTagFilter===t?' active':''}" onclick="setProfileTag('${esc(t)}')">${t}</span>`).join('');
+  document.getElementById('sort-rating').classList.toggle('active',profileSort==='rating');
+  document.getElementById('sort-name').classList.toggle('active',profileSort==='name');
+  let list=[...a.coffees];
+  if(profileTagFilter!=='all')list=list.filter(c=>(c.tags||[]).includes(profileTagFilter));
+  if(profileSort==='rating')list.sort((a,b)=>getBestRating(b)-getBestRating(a));else list.sort((a,b)=>a.name.localeCompare(b.name));
+  document.getElementById('profile-grid').innerHTML=renderCards(list,false,myNames,false,{},profileUserKey);
+}
+function setProfileSort(s,el){profileSort=s;document.querySelectorAll('#profile-overlay .pill[id^=sort]').forEach(p=>p.classList.remove('active'));if(el)el.classList.add('active');renderProfileGrid();}
+function setProfileTag(t){profileTagFilter=(profileTagFilter===t)?'all':t;renderProfileGrid();}
+
+// RENDER MAIN
+function renderMain(){
+  document.getElementById('main-sub').textContent=(myData.coffees||[]).length+' coffee'+((myData.coffees||[]).length!==1?'s':'')+' saved';
+  renderCommunity();renderMyCoffees();
+}
+function renderCommunity(){
+  const keys=Object.keys(community).filter(k=>k!==currentUser.key);
+  if(!keys.length){document.getElementById('community-grid').innerHTML='<div class="empty">No other users yet</div>';return;}
+  document.getElementById('community-grid').innerHTML=keys.map(k=>{const a=community[k];return`<div class="community-card" onclick="showProfile('${k}')">${avatarEl(a.name,36,14)}<div class="cc-name">${a.name}</div><div class="cc-count">${a.coffees.length} coffee${a.coffees.length!==1?'s':''}</div></div>`;}).join('');
+}
+function buildOthersMap(){
+  const map={};Object.entries(community).forEach(([k,a])=>{if(k===currentUser.key)return;a.coffees.forEach(c=>{const key=c.name.toLowerCase();if(!map[key])map[key]=[];if(!map[key].includes(a.name))map[key].push(a.name);});});return map;
+}
+// activeFlavours: array of selected flavour tags (AND logic)
+let activeFlavours=[];
+function renderMyCoffees(){
+  const q=(document.getElementById('search').value||'').toLowerCase();
+  const coffees=myData.coffees||[];
+  const list=coffees.filter(c=>{
+    const latest=getLatestEntry(c);
+    const text=[c.name,c.roaster,c.country,c.type,c.process,...(c.tags||[]),latest.notes,latest.place].join(' ').toLowerCase();
+    const matchQ=!q||text.includes(q);
+    let matchType=true;
+    if(activeFilter.startsWith('type:')){
+      const ft=activeFilter.slice(5);
+      matchType=c.type===ft||(ft==='Espresso'&&c.type==='Both')||(ft==='Filter'&&c.type==='Both');
+    } else if(activeFilter!=='all') matchType=true; // flavours handled separately
+    // AND logic: coffee must have ALL selected flavours
+    const matchFlavours=activeFlavours.length===0||activeFlavours.some(t=>(c.tags||[]).includes(t));
+    return matchQ&&matchType&&matchFlavours;
+  });
+  document.getElementById('my-grid').innerHTML=renderCards(list,true,null,true,buildOthersMap(),currentUser.key);
+}
+function esc(s){return s.replace(/'/g,"\\'");}
+function setFilter(f,el){activeFilter=f;document.querySelectorAll('#screen-main .filter-row .pill').forEach(p=>p.classList.remove('active'));if(el)el.classList.add('active');renderMyCoffees();}
+
+// FLAVOUR GROUPING — AI maps tags to fixed groups, cached per session
+const FLAVOUR_GROUPS=[
+  {label:'🍓 Fruity',key:'fruity'},
+  {label:'🌸 Floral',key:'floral'},
+  {label:'🍫 Chocolate',key:'chocolate'},
+  {label:'🌰 Nutty',key:'nutty'},
+  {label:'🍯 Sweet',key:'sweet'},
+  {label:'🍋 Acidic',key:'acidic'},
+  {label:'🌿 Earthy',key:'earthy'},
+  {label:'🫛 Spicy',key:'spicy'},
+  {label:'☁️ Other',key:'other'},
+];
+async function openTagGroups(){
+  const allTags=allKnownTags();
+  if(!allTags.length){toast('No flavours added yet');return;}
+  document.getElementById('taggroup-bg').classList.add('open');
+  const content=document.getElementById('tag-group-content');
+  if(tagGroupCache){renderTagGroups(allTags,tagGroupCache);return;}
+  // Show flat list immediately while AI classifies
+  renderTagGroupsFlat(allTags,content,true);
+  try{
+    const tagList=allTags.join(', ');
+    const resp=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      model:'claude-sonnet-4-5',
+      max_tokens:600,
+      messages:[{
+        role:'user',
+        content:'Classify each of these coffee flavour tags into one group. Available groups: fruity, floral, chocolate, nutty, sweet, acidic, earthy, spicy, other. Rules: fruit/berry/citrus = fruity; flowers/tea = floral; cocoa/caramel/toffee = chocolate; nuts/malt = nutty; honey/vanilla/sugar/candy = sweet; tart/bright = acidic; wood/herb/tobacco = earthy; pepper/spice/cinnamon = spicy. Multi-word tags like "blood orange" or "cherry lollipop" should be classified by their dominant flavour (blood orange = fruity, cherry lollipop = fruity). Return ONLY a JSON object, nothing else, no code blocks. Format: {"tagname":"groupkey",...}. Tags: '+tagList
+      }]
+    })});
+    if(!resp.ok){const err=await resp.text();throw new Error('API error: '+err);}
+    const data=await resp.json();
+    if(data.error)throw new Error(data.error.message||JSON.stringify(data.error));
+    const raw=data.content.map(i=>i.text||'').join('');
+    // Extract JSON object from anywhere in the response
+    const match=raw.match(/\{[\s\S]*\}/);
+    if(!match)throw new Error('No JSON in response: '+raw.slice(0,200));
+    tagGroupCache=JSON.parse(match[0]);
+    renderTagGroups(allTags,tagGroupCache);
+  }catch(e){
+    console.error('Flavour grouping failed:',e);
+    // Show flat list with error note
+    content.innerHTML=(content.innerHTML||'')+'<div style="font-size:12px;color:var(--red);margin-bottom:8px">Grouping unavailable: '+e.message+'</div>';
+    tagGroupCache={};
+    renderTagGroupsFlat(allTags,content,false);
+  }
+}
+function renderTagGroupsFlat(allTags,content,loading){
+  const selNote=activeFlavours.length?`<div style="font-size:12px;color:var(--blue);margin-bottom:10px">Active: <strong>${activeFlavours.join(' + ')}</strong> &nbsp;<button onclick="clearFlavours()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;text-decoration:underline">clear</button></div>`:'';
+  const loadNote=loading?`<div style="font-size:12px;color:var(--text3);margin-bottom:10px"><span class="spinner"></span>Grouping by flavour…</div>`:'';
+  content.innerHTML=selNote+loadNote+`<div style="display:flex;flex-wrap:wrap;gap:6px">${allTags.map(t=>`<span class="tg-pill${activeFlavours.includes(t)?' active':''}" onclick="toggleFlavour('${esc(t)}')">${t}</span>`).join('')}</div>`;
+}
+function renderTagGroups(allTags,mappings){
+  const content=document.getElementById('tag-group-content');
+  const grouped={};FLAVOUR_GROUPS.forEach(g=>{grouped[g.key]=[];});
+  allTags.forEach(t=>{const k=mappings[t]||'other';grouped[FLAVOUR_GROUPS.find(g=>g.key===k)?k:'other'].push(t);});
+  const selNote=activeFlavours.length?`<div style="font-size:12px;color:var(--blue);margin-bottom:12px">Active: <strong>${activeFlavours.join(' + ')}</strong> &nbsp;<button onclick="clearFlavours()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;text-decoration:underline">clear</button></div>`:'';
+  content.innerHTML=selNote+FLAVOUR_GROUPS.filter(g=>grouped[g.key].length).map(g=>`<div style="margin-bottom:14px">
+    <div style="font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">${g.label}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px">${grouped[g.key].map(t=>`<span class="tg-pill${activeFlavours.includes(t)?' active':''}" onclick="toggleFlavour('${esc(t)}')">${t}</span>`).join('')}</div>
+  </div>`).join('');
+}
+function toggleFlavour(t){
+  const idx=activeFlavours.indexOf(t);if(idx>=0)activeFlavours.splice(idx,1);else activeFlavours.push(t);
+  const allTags=allKnownTags();
+  if(tagGroupCache)renderTagGroups(allTags,tagGroupCache);else renderTagGroupsFlat(allTags,document.getElementById('tag-group-content'),false);
+  renderMyCoffees();
+  const bfb=document.getElementById('browse-flavours-btn');
+  if(bfb){bfb.textContent=activeFlavours.length?`🌿 Flavours (${activeFlavours.length})`:'🌿 Browse flavours';activeFlavours.length?bfb.classList.add('active'):bfb.classList.remove('active');}
+}
+function clearFlavours(){
+  activeFlavours=[];const allTags=allKnownTags();
+  if(tagGroupCache)renderTagGroups(allTags,tagGroupCache);else renderTagGroupsFlat(allTags,document.getElementById('tag-group-content'),false);
+  renderMyCoffees();
+  const bfb=document.getElementById('browse-flavours-btn');if(bfb){bfb.textContent='🌿 Browse flavours';bfb.classList.remove('active');}
+}
+function closeTagGroups(){document.getElementById('taggroup-bg').classList.remove('open');}
+
+// RENDER CARDS
+function renderCards(list,editable,myNamesSet,showOthers,othersMap,ownerKey){
+  if(!list.length)return'<div class="empty"><div class="empty-icon">☕</div>No coffees found</div>';
+  return list.map(c=>{
+    const latest=getLatestEntry(c);
+    const best=getBestRating(c);
+    const others=showOthers?(othersMap[c.name.toLowerCase()]||[]):[];
+    const alsoHas=myNamesSet&&myNamesSet.has(c.name.toLowerCase());
+    const n=c.entries.length;
+    const shadows=Math.min(n-1,3);
+    const step=5;
+    const priceDisplay=formatPrice(latest.price,latest.priceCurrency||'EUR');
+    const processLabel=c.process?` · ${c.process}`:'';
+    const clickHandler=editable?`openDeck(${c.id},true)`:`openPublicDeck('${ownerKey}',${c.id})`;
+    // The card itself — always flows naturally (no absolute positioning)
+    const cardHtml=`<div class="card${n<2?' solo':''}" style="${n<2?'cursor:pointer':''}" ${n<2?`onclick="${clickHandler}"`:''}>
+      <div class="card-img">
+        ${c.photo?`<img src="${c.photo}" alt="${c.name}">`:'<span class="card-img-placeholder">☕</span>'}
+        ${c.type?`<span class="type-badge">${c.type}${processLabel}</span>`:''}
+        ${alsoHas?`<span class="shared-badge">In my list</span>`:''}
+        ${n>1?`<span class="deck-count-badge">${n}×</span>`:''}
+      </div>
+      <div class="card-body">
+        <div class="card-name">${c.name}</div>
+        <div class="card-origin">${[c.country,c.roaster].filter(Boolean).join(' · ')}</div>
+        ${best?`<div class="card-stars">${'★'.repeat(best)}${'☆'.repeat(5-best)}</div>`:''}
+        ${priceDisplay?`<div class="card-price"><span>${priceDisplay}</span> / 100g</div>`:''}
+        <div class="card-tags">${(c.tags||[]).map(t=>`<span class="mini-tag">${t}</span>`).join('')}</div>
+        ${others.length?`<div class="also-has">Also enjoyed: <strong>${others.join(', ')}</strong></div>`:''}
+      </div>
+    </div>`;
+    if(n<2)return cardHtml;
+    // Shadows: SAME size as the card, just offset. Use inset:0 + translate so card size doesn't affect shadow size.
+    // We put shadows and card in a relative wrapper. The wrapper has natural height (from the card which is NOT absolute).
+    // Shadows are absolute and cover the same rect as the card, just translated.
+    let shadowsHtml='';
+    for(let i=shadows;i>=1;i--){
+      const tx=i*step,ty=i*step,op=i===1?.65:i===2?.4:.22;
+      shadowsHtml+=`<div class="deck-shadow-el" style="inset:0;transform:translate(${tx}px,${ty}px);opacity:${op}"></div>`;
+    }
+    const outerPad=shadows*step;
+    return`<div class="deck-outer" style="padding-right:${outerPad}px;padding-bottom:${outerPad}px" onclick="${clickHandler}">
+      ${shadowsHtml}${cardHtml}
+    </div>`;
+  }).join('');
+}
+
+// DECK MODAL
+function openDeck(cid,editable){
+  deckCoffeeId=cid;deckEditable=!!editable;window._publicDeckData=null;
+  const c=(myData.coffees||[]).find(c=>c.id===cid);
+  deckEntryIdx=c?c.entries.length-1:0;
+  renderDeckModal();document.getElementById('deck-modal-bg').classList.add('open');
+}
+function openPublicDeck(ownerKey,cid){
+  const a=community[ownerKey];if(!a)return;
+  const c=a.coffees.find(x=>x.id===cid);if(!c)return;
+  deckCoffeeId=null;window._publicDeckData={coffee:c,ownerKey,idx:c.entries.length-1};
+  renderPublicDeckModal();document.getElementById('deck-modal-bg').classList.add('open');
+}
+function renderPublicDeckModal(){
+  const {coffee:c,idx}=window._publicDeckData;const e=c.entries[idx];
+  document.getElementById('deck-coffeename').textContent=c.name;
+  document.getElementById('deck-origin').textContent=[c.country,c.roaster].filter(Boolean).join(' · ');
+  document.getElementById('deck-hero-area').innerHTML=c.photo?`<img class="deck-hero" src="${c.photo}" alt="${c.name}">`:`<div class="deck-hero-ph">☕</div>`;
+  document.getElementById('deck-counter').textContent=`Entry ${idx+1} of ${c.entries.length}`;
+  document.getElementById('deck-prev').disabled=idx===0;document.getElementById('deck-next').disabled=idx===c.entries.length-1;
+  document.getElementById('deck-prev').onclick=()=>{window._publicDeckData.idx=Math.max(0,idx-1);renderPublicDeckModal();};
+  document.getElementById('deck-next').onclick=()=>{window._publicDeckData.idx=Math.min(c.entries.length-1,idx+1);renderPublicDeckModal();};
+  const priceDisplay=formatPrice(e.price,e.priceCurrency||'EUR');
+  const chips=[],details=[];
+  if(c.type)chips.push(`<span class="deck-chip">${c.type}</span>`);
+  if(c.process)chips.push(`<span class="deck-chip amber">${c.process}</span>`);
+  (c.tags||[]).forEach(t=>chips.push(`<span class="deck-chip green">${t}</span>`));
+  if(e.place)details.push(['Where bought',e.place]);if(priceDisplay)details.push(['Price / 100g',priceDisplay]);
+  document.getElementById('deck-body').innerHTML=`
+    ${chips.length?`<div class="deck-chips">${chips.join('')}</div>`:''}
+    ${e.rating?`<div class="deck-stars">${'★'.repeat(e.rating)}${'☆'.repeat(5-e.rating)}</div>`:''}
+    ${details.length?`<div class="deck-grid">${details.map(([l,v])=>`<div class="deck-cell"><div class="deck-cell-label">${l}</div><div class="deck-cell-val">${v}</div></div>`).join('')}</div>`:''}
+    ${e.notes?`<div class="deck-notes-block"><div class="deck-notes-label">Tasting notes</div><div class="deck-notes-text">${e.notes}</div></div>`:''}
+    ${e.date?`<div class="deck-date">${fmtDate(e.date)}</div>`:''}`;
+  document.getElementById('deck-footer').innerHTML='<div></div>';
+}
+function closeDeckModal(){document.getElementById('deck-modal-bg').classList.remove('open');window._publicDeckData=null;}
+function deckNav(dir){
+  if(window._publicDeckData)return;
+  const c=(myData.coffees||[]).find(c=>c.id===deckCoffeeId);if(!c)return;
+  deckEntryIdx=Math.max(0,Math.min(c.entries.length-1,deckEntryIdx+dir));renderDeckModal();
+}
+function renderDeckModal(){
+  const c=(myData.coffees||[]).find(c=>c.id===deckCoffeeId);if(!c)return;
+  const e=c.entries[deckEntryIdx];
+  document.getElementById('deck-coffeename').textContent=c.name;
+  document.getElementById('deck-origin').textContent=[c.country,c.roaster].filter(Boolean).join(' · ');
+  document.getElementById('deck-hero-area').innerHTML=c.photo?`<img class="deck-hero" src="${c.photo}" alt="${c.name}">`:`<div class="deck-hero-ph">☕</div>`;
+  document.getElementById('deck-counter').textContent=`Entry ${deckEntryIdx+1} of ${c.entries.length}`;
+  document.getElementById('deck-prev').disabled=deckEntryIdx===0;document.getElementById('deck-next').disabled=deckEntryIdx===c.entries.length-1;
+  document.getElementById('deck-prev').onclick=()=>deckNav(-1);document.getElementById('deck-next').onclick=()=>deckNav(1);
+  const priceDisplay=formatPrice(e.price,e.priceCurrency||'EUR');
+  const chips=[],details=[];
+  if(c.type)chips.push(`<span class="deck-chip">${c.type}</span>`);
+  if(c.process)chips.push(`<span class="deck-chip amber">${c.process}</span>`);
+  (c.tags||[]).forEach(t=>chips.push(`<span class="deck-chip green">${t}</span>`));
+  if(e.place)details.push(['Where bought',e.place]);if(priceDisplay)details.push(['Price / 100g',priceDisplay]);
+  if(e.grindSize)details.push(['Grind size',e.grindSize]);if(e.grindTime)details.push(['Grind time',e.grindTime+'s']);
+  document.getElementById('deck-body').innerHTML=`
+    ${chips.length?`<div class="deck-chips">${chips.join('')}</div>`:''}
+    ${e.rating?`<div class="deck-stars">${'★'.repeat(e.rating)}${'☆'.repeat(5-e.rating)}</div>`:''}
+    ${details.length?`<div class="deck-grid">${details.map(([l,v])=>`<div class="deck-cell"><div class="deck-cell-label">${l}</div><div class="deck-cell-val">${v}</div></div>`).join('')}</div>`:''}
+    ${e.notes?`<div class="deck-notes-block"><div class="deck-notes-label">Tasting notes</div><div class="deck-notes-text">${e.notes}</div></div>`:''}
+    ${e.date?`<div class="deck-date">${fmtDate(e.date)}</div>`:''}`;
+  document.getElementById('deck-footer').innerHTML=deckEditable
+    ?`<button class="deck-del-btn" onclick="deleteDeckEntry()">Delete this entry</button><div style="display:flex;gap:8px"><button class="deck-edit-btn" onclick="editDeckEntry()">Edit</button><button class="deck-add-btn" onclick="addAnotherEntry()">+ Add another entry</button></div>`
+    :'<div></div>';
+}
+function editDeckEntry(){const c=(myData.coffees||[]).find(c=>c.id===deckCoffeeId);if(!c)return;closeDeckModal();openModal(c,deckEntryIdx,false);}
+function addAnotherEntry(){const c=(myData.coffees||[]).find(c=>c.id===deckCoffeeId);if(!c)return;closeDeckModal();openModal(c,null,true);}
+async function deleteDeckEntry(){
+  const c=(myData.coffees||[]).find(c=>c.id===deckCoffeeId);if(!c)return;
+  if(c.entries.length===1){if(!confirm('This is the only entry. Delete the whole coffee?'))return;
+    try{await api('DELETE',`/account/${currentUser.key}/coffees/${c.id}`);myData.coffees=myData.coffees.filter(x=>x.id!==c.id);community[currentUser.key]={name:currentUser.name,coffees:myData.coffees.map(publicCoffee)};closeDeckModal();renderMain();toast('Coffee deleted');}catch(e){alert('Delete failed.');}
+  }else{if(!confirm('Delete this entry?'))return;c.entries.splice(deckEntryIdx,1);
+    try{await api('PUT',`/account/${currentUser.key}/coffees/${c.id}`,c);community[currentUser.key]={name:currentUser.name,coffees:myData.coffees.map(publicCoffee)};deckEntryIdx=Math.min(deckEntryIdx,c.entries.length-1);renderDeckModal();renderMain();toast('Entry deleted');}catch(e){alert('Delete failed.');}
+  }
+}
+
+// ADD/EDIT MODAL
+function openModal(coffee,entryIdx,addingNew){
+  editingCoffeeId=coffee?coffee.id:null;
+  editingEntryIdx=(entryIdx!==undefined&&entryIdx!==null)?entryIdx:null;
+  isAddingEntry=!!addingNew;
+  const isNew=!coffee,isEdit=coffee&&!addingNew&&entryIdx!==null&&entryIdx!==undefined;
+  document.getElementById('modal-title').textContent=isNew?'Add a coffee':isAddingEntry?`New entry — ${coffee.name}`:`Edit — ${coffee.name}`;
+  // Coffee-level fields always shown
+  document.getElementById('coffee-level-section').style.display='block';
+  document.getElementById('coffee-sec-label').textContent='Coffee details';
+  if(isNew){['f-name','f-roaster','f-country'].forEach(id=>document.getElementById(id).value='');document.getElementById('f-type').value='';document.getElementById('f-process').value='';photoData='';const prev=document.getElementById('photo-preview');prev.style.display='none';prev.src='';}
+  else{
+    document.getElementById('f-name').value=coffee.name||'';
+    document.getElementById('f-roaster').value=coffee.roaster||'';
+    document.getElementById('f-country').value=coffee.country||'';
+    document.getElementById('f-type').value=coffee.type||'';
+    document.getElementById('f-process').value=coffee.process||'';
+    photoData=coffee.photo||'';
+    const prev=document.getElementById('photo-preview');if(photoData){prev.src=photoData;prev.style.display='block';}else{prev.style.display='none';prev.src='';}
+  }
+  document.getElementById('entry-sec-label').textContent=isNew?'First purchase':'This purchase';
+  // For new entry on existing coffee, carry over price, grind size and place from latest
+  const entry=isEdit?coffee.entries[entryIdx]:isAddingEntry?getLatestEntry(coffee):null;
+  document.getElementById('f-place').value=entry?(entry.place||''):'';
+  document.getElementById('f-price').value=entry?(entry.price||''):''; // carry over even for new entry
+  priceCurrency=(entry&&entry.priceCurrency)||'EUR';setPriceCurr(priceCurrency);
+  document.getElementById('f-grind-size').value=entry?(entry.grindSize||''):''; // carry over
+  document.getElementById('f-grind-time').value=isEdit?(entry.grindTime||''):'';
+  document.getElementById('f-private-notes').value=isEdit?(entry.privateNotes||''):'';
+  document.getElementById('f-notes').value=isEdit?(entry.notes||''):'';
+  currentRating=isEdit?(entry.rating||0):0;
+  document.getElementById('f-date').value=isEdit&&entry.date?entry.date:new Date().toISOString().slice(0,10);
+  pendingTags=coffee?[...(coffee.tags||[])]:[];
+  updateStars();renderSelectedTags();
+  document.getElementById('suggestion-box').style.display='none';
+  document.getElementById('delete-btn').style.display=isEdit?'block':'none';
+  document.getElementById('calc-popup').classList.remove('open');
+  document.getElementById('modal-bg').classList.add('open');
+  setTimeout(()=>{const el=document.getElementById(isNew?'f-name':'f-place');if(el)el.focus();},50);
+}
+function closeModal(){document.getElementById('modal-bg').classList.remove('open');}
+function updateStars(){document.querySelectorAll('#stars .star').forEach(s=>s.classList.toggle('on',parseInt(s.dataset.v)<=currentRating));}
+document.getElementById('stars').addEventListener('click',e=>{if(e.target.classList.contains('star')){currentRating=parseInt(e.target.dataset.v);updateStars();}});
+function addTag(){const i=document.getElementById('tag-input'),v=i.value.trim().toLowerCase().replace(/[^a-z0-9\-\s]/g,'');if(v&&!pendingTags.includes(v))pendingTags.push(v);i.value='';closeAc('ac-tags');renderSelectedTags();}
+function removeTag(t){pendingTags=pendingTags.filter(x=>x!==t);renderSelectedTags();}
+function renderSelectedTags(){document.getElementById('selected-tags').innerHTML=pendingTags.map(t=>`<span class="sel-tag" onclick="removeTag('${esc(t)}')">${t} ×</span>`).join('');}
+function handlePhoto(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{photoData=ev.target.result;const p=document.getElementById('photo-preview');p.src=photoData;p.style.display='block';};r.readAsDataURL(file);}
+
+// SUGGESTIONS (name) — also fills roaster, country, type, process, tags, photo
+let _sugMap={};
+function similarity(a,b){a=a.toLowerCase();b=b.toLowerCase();if(b.includes(a)||a.includes(b))return.9;const wa=a.split(/\s+/),wb=b.split(/\s+/);return wa.filter(w=>w.length>2&&wb.some(x=>x.includes(w)||w.includes(x))).length/Math.max(wa.length,wb.length);}
+function checkSuggestions(){
+  const val=document.getElementById('f-name').value.trim();
+  if(val.length<3){document.getElementById('suggestion-box').style.display='none';return;}
+  const candidates=new Map();
+  Object.entries(community).forEach(([k,a])=>{if(k===currentUser.key)return;a.coffees.forEach(c=>{const sim=similarity(val,c.name);if(sim>=0.4&&c.name.toLowerCase()!==val.toLowerCase()){if(!candidates.has(c.name)||candidates.get(c.name).sim<sim)candidates.set(c.name,{sim,roaster:c.roaster||'',country:c.country||'',type:c.type||'',process:c.process||'',tags:[...(c.tags||[])],photo:c.photo||''});}});});
+  const sorted=[...candidates.entries()].sort((a,b)=>b[1].sim-a[1].sim).slice(0,4);
+  const box=document.getElementById('suggestion-box');
+  if(!sorted.length){box.style.display='none';return;}
+  _sugMap={};
+  sorted.forEach(([name,meta],i)=>{_sugMap['s'+i]={name,...meta};});
+  document.getElementById('sug-options').innerHTML=sorted.map(([name,meta],i)=>`<span class="sug-pill" onclick="useSuggestion('s${0+i}')">${name}${meta.roaster?` · ${meta.roaster}`:''}</span>`).join('');
+  box.style.display='block';
+}
+function useSuggestion(key){
+  const m=_sugMap[key];if(!m)return;
+  document.getElementById('f-name').value=m.name||'';
+  if(m.roaster)document.getElementById('f-roaster').value=m.roaster;
+  if(m.country)document.getElementById('f-country').value=m.country;
+  if(m.type)document.getElementById('f-type').value=m.type;
+  if(m.process)document.getElementById('f-process').value=m.process;
+  if(m.tags&&m.tags.length){pendingTags=[...new Set([...pendingTags,...m.tags])];renderSelectedTags();}
+  if(m.photo){photoData=m.photo;const p=document.getElementById('photo-preview');p.src=m.photo;p.style.display='block';}
+  document.getElementById('suggestion-box').style.display='none';
+}
+
+// SAVE/DELETE
+async function saveCoffee(){
+  const isNew=!editingCoffeeId,isEdit=!isNew&&editingEntryIdx!==null&&!isAddingEntry;
+  const newEntry={idx:Date.now(),place:document.getElementById('f-place').value.trim(),price:document.getElementById('f-price').value.trim(),priceCurrency,grindSize:document.getElementById('f-grind-size').value.trim(),grindTime:document.getElementById('f-grind-time').value.trim(),privateNotes:document.getElementById('f-private-notes').value.trim(),notes:document.getElementById('f-notes').value.trim(),rating:currentRating,date:document.getElementById('f-date').value||new Date().toISOString().slice(0,10)};
+  try{
+    if(isNew){
+      const name=document.getElementById('f-name').value.trim();if(!name){alert('Please enter a coffee name');return;}
+      const obj={name,roaster:document.getElementById('f-roaster').value.trim(),country:document.getElementById('f-country').value.trim(),type:document.getElementById('f-type').value,process:document.getElementById('f-process').value,tags:[...pendingTags],photo:photoData,entries:[newEntry]};
+      const created=await api('POST',`/account/${currentUser.key}/coffees`,obj);if(!created.entries)created.entries=[newEntry];myData.coffees.push(created);
+    }else{
+      const c=myData.coffees.find(x=>x.id===editingCoffeeId);if(!c)return;
+      // Update coffee-level fields
+      c.name=document.getElementById('f-name').value.trim()||c.name;
+      c.roaster=document.getElementById('f-roaster').value.trim();c.country=document.getElementById('f-country').value.trim();
+      c.type=document.getElementById('f-type').value;c.process=document.getElementById('f-process').value;
+      c.tags=[...pendingTags];if(photoData)c.photo=photoData;
+      if(isEdit)c.entries[editingEntryIdx]={...c.entries[editingEntryIdx],...newEntry};else c.entries.push(newEntry);
+      await api('PUT',`/account/${currentUser.key}/coffees/${c.id}`,c);
+    }
+    community[currentUser.key]={name:currentUser.name,coffees:myData.coffees.map(publicCoffee)};
+    tagGroupCache=null;closeModal();renderMain();toast('Saved ✓');
+  }catch(e){alert('Save failed: '+e.message);}
+}
+async function deleteEntry(){
+  if(editingEntryIdx===null||!editingCoffeeId)return;
+  const c=myData.coffees.find(x=>x.id===editingCoffeeId);if(!c)return;
+  if(c.entries.length===1){if(!confirm('Delete the whole coffee?'))return;await api('DELETE',`/account/${currentUser.key}/coffees/${c.id}`);myData.coffees=myData.coffees.filter(x=>x.id!==c.id);}
+  else{if(!confirm('Delete this entry?'))return;c.entries.splice(editingEntryIdx,1);await api('PUT',`/account/${currentUser.key}/coffees/${c.id}`,c);}
+  community[currentUser.key]={name:currentUser.name,coffees:myData.coffees.map(publicCoffee)};closeModal();renderMain();toast('Deleted');
+}
+function publicCoffee(c){return{id:c.id,name:c.name,roaster:c.roaster,country:c.country,type:c.type,process:c.process,tags:c.tags,photo:c.photo,entries:(c.entries||[]).map(e=>{const{grindSize,grindTime,privateNotes,...pub}=e;return pub;})};}
+
+// INIT
+fetchRate();
+loadExistingAccounts();
+</script>
+</body>
+</html>
