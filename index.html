@@ -86,7 +86,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color .15s,transform .15s;position:relative}
 .card.solo{cursor:pointer}.card.solo:hover{border-color:var(--border2);transform:translateY(-2px)}
 .card-img{width:100%;height:120px;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
-.card-img img{width:100%;height:100%;object-fit:contain;object-position:center}.card-img-placeholder{font-size:36px;opacity:.3}
+.card-img img{width:100%;height:100%;object-fit:cover;object-position:center top}.card-img-placeholder{font-size:36px;opacity:.3}
 .type-badge{position:absolute;top:7px;right:7px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;background:rgba(253,250,244,.92);color:var(--text2);border:1px solid var(--border)}
 .shared-badge{position:absolute;top:7px;left:7px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;background:var(--blue-light);color:var(--blue);border:1px solid #B5D4F4}
 .deck-count-badge{position:absolute;bottom:7px;right:7px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;background:var(--amber);color:#fff}
@@ -121,7 +121,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .deck-modal-header{display:flex;align-items:flex-start;justify-content:space-between;padding:1.25rem 1.5rem 0}
 .deck-coffeename{font-family:'Playfair Display',serif;font-size:20px;font-weight:500;line-height:1.2;flex:1}
 .deck-origin-line{font-size:13px;color:var(--text3);margin-top:3px}
-.deck-hero{width:100%;height:200px;object-fit:contain;object-position:center;margin-top:1rem;background:var(--surface2)}
+.deck-hero{width:100%;height:auto;max-height:320px;object-fit:contain;object-position:center;margin-top:1rem;background:var(--surface2);display:block}
 .deck-hero-ph{height:50px;display:flex;align-items:center;justify-content:center;font-size:36px;opacity:.2;margin-top:.5rem}
 .deck-nav-strip{display:flex;align-items:center;gap:10px;padding:.65rem 1.5rem;border-bottom:1px solid var(--border)}
 .deck-nav-btn{background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 12px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--text2)}
@@ -444,7 +444,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <h2>Browse by flavour</h2>
       <button class="close-btn" onclick="closeTagGroups()">✕</button>
     </div>
-    <p style="font-size:13px;color:var(--text3);margin-bottom:1rem">Select one or more flavours — shows coffees that have <em>any</em> of the selected. Click again to deselect.</p>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:1rem">Select one or more flavours to filter your coffees. Shows any coffee with at least one selected flavour.</p>
     <div id="tag-group-content"></div>
     <div style="margin-top:1rem;text-align:right">
       <button class="cancel-btn" onclick="closeTagGroups()">Done</button>
@@ -664,81 +664,37 @@ function renderMyCoffees(){
 function esc(s){return s.replace(/'/g,"\\'");}
 function setFilter(f,el){activeFilter=f;document.querySelectorAll('#screen-main .filter-row .pill').forEach(p=>p.classList.remove('active'));if(el)el.classList.add('active');renderMyCoffees();}
 
-// FLAVOUR GROUPING — AI maps tags to fixed groups, cached per session
-const FLAVOUR_GROUPS=[
-  {label:'🍓 Fruity',key:'fruity'},
-  {label:'🌸 Floral',key:'floral'},
-  {label:'🍫 Chocolate',key:'chocolate'},
-  {label:'🌰 Nutty',key:'nutty'},
-  {label:'🍯 Sweet',key:'sweet'},
-  {label:'🍋 Acidic',key:'acidic'},
-  {label:'🌿 Earthy',key:'earthy'},
-  {label:'🫛 Spicy',key:'spicy'},
-  {label:'☁️ Other',key:'other'},
-];
-async function openTagGroups(){
+// FLAVOUR SELECTOR — flat multi-select, OR logic
+function openTagGroups(){
   const allTags=allKnownTags();
   if(!allTags.length){toast('No flavours added yet');return;}
+  renderTagGroupsFlat(allTags);
   document.getElementById('taggroup-bg').classList.add('open');
-  const content=document.getElementById('tag-group-content');
-  if(tagGroupCache){renderTagGroups(allTags,tagGroupCache);return;}
-  // Show flat list immediately while AI classifies
-  renderTagGroupsFlat(allTags,content,true);
-  try{
-    const tagList=allTags.join(', ');
-    const resp=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      model:'claude-sonnet-4-5',
-      max_tokens:600,
-      messages:[{
-        role:'user',
-        content:'Classify each of these coffee flavour tags into one group. Available groups: fruity, floral, chocolate, nutty, sweet, acidic, earthy, spicy, other. Rules: fruit/berry/citrus = fruity; flowers/tea = floral; cocoa/caramel/toffee = chocolate; nuts/malt = nutty; honey/vanilla/sugar/candy = sweet; tart/bright = acidic; wood/herb/tobacco = earthy; pepper/spice/cinnamon = spicy. Multi-word tags like "blood orange" or "cherry lollipop" should be classified by their dominant flavour (blood orange = fruity, cherry lollipop = fruity). Return ONLY a JSON object, nothing else, no code blocks. Format: {"tagname":"groupkey",...}. Tags: '+tagList
-      }]
-    })});
-    if(!resp.ok){const err=await resp.text();throw new Error('API error: '+err);}
-    const data=await resp.json();
-    if(data.error)throw new Error(data.error.message||JSON.stringify(data.error));
-    const raw=data.content.map(i=>i.text||'').join('');
-    // Extract JSON object from anywhere in the response
-    const match=raw.match(/\{[\s\S]*\}/);
-    if(!match)throw new Error('No JSON in response: '+raw.slice(0,200));
-    tagGroupCache=JSON.parse(match[0]);
-    renderTagGroups(allTags,tagGroupCache);
-  }catch(e){
-    console.error('Flavour grouping failed:',e);
-    // Show flat list with error note
-    content.innerHTML=(content.innerHTML||'')+'<div style="font-size:12px;color:var(--red);margin-bottom:8px">Grouping unavailable: '+e.message+'</div>';
-    tagGroupCache={};
-    renderTagGroupsFlat(allTags,content,false);
-  }
 }
-function renderTagGroupsFlat(allTags,content,loading){
-  const selNote=activeFlavours.length?`<div style="font-size:12px;color:var(--blue);margin-bottom:10px">Active: <strong>${activeFlavours.join(' + ')}</strong> &nbsp;<button onclick="clearFlavours()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;text-decoration:underline">clear</button></div>`:'';
-  const loadNote=loading?`<div style="font-size:12px;color:var(--text3);margin-bottom:10px"><span class="spinner"></span>Grouping by flavour…</div>`:'';
-  content.innerHTML=selNote+loadNote+`<div style="display:flex;flex-wrap:wrap;gap:6px">${allTags.map(t=>`<span class="tg-pill${activeFlavours.includes(t)?' active':''}" onclick="toggleFlavour('${esc(t)}')">${t}</span>`).join('')}</div>`;
-}
-function renderTagGroups(allTags,mappings){
+function renderTagGroupsFlat(allTags){
   const content=document.getElementById('tag-group-content');
-  const grouped={};FLAVOUR_GROUPS.forEach(g=>{grouped[g.key]=[];});
-  allTags.forEach(t=>{const k=mappings[t]||'other';grouped[FLAVOUR_GROUPS.find(g=>g.key===k)?k:'other'].push(t);});
-  const selNote=activeFlavours.length?`<div style="font-size:12px;color:var(--blue);margin-bottom:12px">Active: <strong>${activeFlavours.join(' + ')}</strong> &nbsp;<button onclick="clearFlavours()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;text-decoration:underline">clear</button></div>`:'';
-  content.innerHTML=selNote+FLAVOUR_GROUPS.filter(g=>grouped[g.key].length).map(g=>`<div style="margin-bottom:14px">
-    <div style="font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">${g.label}</div>
-    <div style="display:flex;flex-wrap:wrap;gap:5px">${grouped[g.key].map(t=>`<span class="tg-pill${activeFlavours.includes(t)?' active':''}" onclick="toggleFlavour('${esc(t)}')">${t}</span>`).join('')}</div>
-  </div>`).join('');
+  const selNote=activeFlavours.length
+    ?`<div style="font-size:12px;color:var(--blue);margin-bottom:12px">Any of: <strong>${activeFlavours.join(', ')}</strong> &nbsp;<button onclick="clearFlavours()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;text-decoration:underline">clear</button></div>`
+    :'';
+  content.innerHTML=selNote+`<div style="display:flex;flex-wrap:wrap;gap:6px">${allTags.map(t=>`<span class="tg-pill${activeFlavours.includes(t)?' active':''}" onclick="toggleFlavour('${esc(t)}')">${t}</span>`).join('')}</div>`;
 }
 function toggleFlavour(t){
-  const idx=activeFlavours.indexOf(t);if(idx>=0)activeFlavours.splice(idx,1);else activeFlavours.push(t);
-  const allTags=allKnownTags();
-  if(tagGroupCache)renderTagGroups(allTags,tagGroupCache);else renderTagGroupsFlat(allTags,document.getElementById('tag-group-content'),false);
+  const idx=activeFlavours.indexOf(t);
+  if(idx>=0)activeFlavours.splice(idx,1);else activeFlavours.push(t);
+  renderTagGroupsFlat(allKnownTags());
   renderMyCoffees();
   const bfb=document.getElementById('browse-flavours-btn');
-  if(bfb){bfb.textContent=activeFlavours.length?`🌿 Flavours (${activeFlavours.length})`:'🌿 Browse flavours';activeFlavours.length?bfb.classList.add('active'):bfb.classList.remove('active');}
+  if(bfb){
+    bfb.textContent=activeFlavours.length?`🌿 Flavours (${activeFlavours.length})`:'🌿 Browse flavours';
+    activeFlavours.length?bfb.classList.add('active'):bfb.classList.remove('active');
+  }
 }
 function clearFlavours(){
-  activeFlavours=[];const allTags=allKnownTags();
-  if(tagGroupCache)renderTagGroups(allTags,tagGroupCache);else renderTagGroupsFlat(allTags,document.getElementById('tag-group-content'),false);
+  activeFlavours=[];
+  renderTagGroupsFlat(allKnownTags());
   renderMyCoffees();
-  const bfb=document.getElementById('browse-flavours-btn');if(bfb){bfb.textContent='🌿 Browse flavours';bfb.classList.remove('active');}
+  const bfb=document.getElementById('browse-flavours-btn');
+  if(bfb){bfb.textContent='🌿 Browse flavours';bfb.classList.remove('active');}
 }
 function closeTagGroups(){document.getElementById('taggroup-bg').classList.remove('open');}
 
