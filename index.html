@@ -521,7 +521,7 @@ function formatDateInput(el){
   const digits=v.replace(/\D/g,'');
   if(digits.length===8)el.value=digits.slice(0,2)+'/'+digits.slice(2,4)+'/'+digits.slice(4);
 }
-function fmtDate(iso){if(!iso)return'';const[y,m,d]=iso.split('-');return`${d}/${m}/${y}`;}
+function fmtDate(iso){if(!iso)return'';if(iso.includes('/'))return iso;const[y,m,d]=iso.split('-');if(!y||!m||!d)return iso;return`${d}/${m}/${y}`;}
 function toIso(dmy){if(!dmy)return'';if(dmy.includes('-'))return dmy;const[d,m,y]=dmy.split('/');return`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;}
 
 // CURRENCY
@@ -1013,7 +1013,7 @@ function useSuggestion(key){
 // SAVE/DELETE
 async function saveCoffee(){
   const isNew=!editingCoffeeId,isEdit=!isNew&&editingEntryIdx!==null&&!isAddingEntry;
-  const newEntry={idx:Date.now(),place:document.getElementById('f-place').value.trim(),price:document.getElementById('f-price').value.trim(),priceCurrency,grindSize:document.getElementById('f-grind-size').value.trim(),grindTime:document.getElementById('f-grind-time').value.trim(),privateNotes:document.getElementById('f-private-notes').value.trim(),notes:document.getElementById('f-notes').value.trim(),rating:currentRating,date:document.getElementById('f-date').value||new Date().toISOString().slice(0,10)};
+  const newEntry={idx:Date.now(),place:document.getElementById('f-place').value.trim(),price:document.getElementById('f-price').value.trim(),priceCurrency,grindSize:document.getElementById('f-grind-size').value.trim(),grindTime:document.getElementById('f-grind-time').value.trim(),privateNotes:document.getElementById('f-private-notes').value.trim(),notes:document.getElementById('f-notes').value.trim(),rating:currentRating,date:toIso(document.getElementById('f-date').value)||new Date().toISOString().slice(0,10)};
   try{
     if(isNew){
       const name=document.getElementById('f-name').value.trim();if(!name){alert('Please enter a coffee name');return;}
