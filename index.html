@@ -61,10 +61,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .add-btn{background:var(--green);color:#EAF3DE;border:none;border-radius:var(--radius-sm);padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap}
 .add-btn:hover{background:#27500A}
 /* COMMUNITY */
-.community-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:1rem}
-.community-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;text-align:center;cursor:pointer;transition:border-color .15s,transform .12s}
+.community-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:1rem}
+.community-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.9rem 1rem;cursor:pointer;transition:border-color .15s,transform .12s;display:flex;align-items:center;gap:10px}
 .community-card:hover{border-color:var(--border2);transform:translateY(-2px)}
-.cc-name{font-size:13px;font-weight:500;margin-top:6px}.cc-count{font-size:11px;color:var(--text3);margin-top:2px}
+.cc-name{font-size:13px;font-weight:500;margin-top:0}.cc-count{font-size:11px;color:var(--text3);margin-top:1px}
 /* CONTROLS */
 .controls{margin-bottom:1.25rem}
 .search-wrap{position:relative;margin-bottom:10px}
@@ -86,7 +86,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color .15s,transform .15s;position:relative}
 .card.solo{cursor:pointer}.card.solo:hover{border-color:var(--border2);transform:translateY(-2px)}
 .card-img{width:100%;height:120px;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
-.card-img img{width:100%;height:100%;object-fit:cover;object-position:center top}.card-img-placeholder{font-size:36px;opacity:.3}
+.card-img img{width:100%;height:100%;object-fit:contain;object-position:center;background:var(--surface2)}.card-img-placeholder{font-size:36px;opacity:.3}
 .type-badge{position:absolute;top:7px;right:7px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;background:rgba(253,250,244,.92);color:var(--text2);border:1px solid var(--border)}
 .shared-badge{position:absolute;top:7px;left:7px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;background:var(--blue-light);color:var(--blue);border:1px solid #B5D4F4}
 .deck-count-badge{position:absolute;bottom:7px;right:7px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;background:var(--amber);color:#fff}
@@ -263,6 +263,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div class="rate-note" id="rate-note"></div>
         <button class="ud-btn" onclick="closeDropdown();logout()">Log out</button>
         <div class="ud-divider"></div>
+        <button class="ud-btn" onclick="closeDropdown();openSetPin()">Set / change PIN</button>
+        <div class="ud-divider"></div>
         <button class="ud-delete" onclick="confirmDeleteProfile()">delete account</button>
       </div>
     </div>
@@ -429,7 +431,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="modal-actions">
       <button class="del-entry-btn" id="delete-btn" onclick="deleteEntry()" style="display:none">Delete entry</button>
       <div class="modal-right">
-        <div class="date-wrap" title="Entry date"><input type="date" id="f-date"></div>
+        <div class="date-wrap" title="Entry date (dd/mm/yyyy)"><input type="text" id="f-date" placeholder="dd/mm/yyyy" maxlength="10" style="width:100px;font-size:12px;color:var(--text3);border:none;background:transparent;outline:none;cursor:text;padding:4px 6px;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif" onfocus="this.style.background='var(--surface2)'" onblur="this.style.background='transparent';formatDateInput(this)"></div>
         <button class="cancel-btn" onclick="closeModal()">Cancel</button>
         <button class="save-btn" onclick="saveCoffee()">Save</button>
       </div>
@@ -454,6 +456,41 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 <div class="toast" id="toast"></div>
 
+<!-- PIN MODAL -->
+<div class="modal-bg" id="pin-modal-bg" onclick="if(event.target===this)closePinModal()" style="z-index:600">
+  <div class="modal" style="max-width:320px" onclick="event.stopPropagation()">
+    <div class="modal-header"><h2 id="pin-modal-title">Set PIN</h2><button class="close-btn" onclick="closePinModal()">✕</button></div>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:1rem" id="pin-modal-desc">Add a 4-digit PIN to protect your account. Leave blank to remove PIN.</p>
+    <div class="field"><label id="pin-label">New PIN (4 digits, optional)</label>
+      <input type="password" id="pin-input" maxlength="4" placeholder="e.g. 1234" inputmode="numeric" pattern="[0-9]*">
+    </div>
+    <div class="field" id="pin-confirm-wrap"><label>Confirm PIN</label>
+      <input type="password" id="pin-confirm" maxlength="4" placeholder="repeat PIN" inputmode="numeric" pattern="[0-9]*">
+    </div>
+    <div style="color:var(--red);font-size:13px;min-height:18px;margin-bottom:8px" id="pin-err"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="cancel-btn" onclick="closePinModal()">Cancel</button>
+      <button class="save-btn" onclick="savePin()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- PIN ENTRY MODAL (on login) -->
+<div class="modal-bg" id="pin-entry-bg" style="z-index:700">
+  <div class="modal" style="max-width:300px" onclick="event.stopPropagation()">
+    <div class="modal-header"><h2>Enter PIN</h2></div>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:1rem" id="pin-entry-desc"></p>
+    <div class="field">
+      <input type="password" id="pin-entry-input" maxlength="4" placeholder="4-digit PIN" inputmode="numeric" pattern="[0-9]*" onkeydown="if(event.key==='Enter')submitPinEntry()">
+    </div>
+    <div style="color:var(--red);font-size:13px;min-height:18px;margin-bottom:8px" id="pin-entry-err"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="cancel-btn" onclick="cancelPinEntry()">Cancel</button>
+      <button class="save-btn" onclick="submitPinEntry()">Enter</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // STATE
 let currentUser=null,myData=null,community={};
@@ -475,6 +512,15 @@ function avatarEl(name,size=32,fs=13){
 }
 
 // DATE: format ISO to dd/mm/yyyy
+function formatDateInput(el){
+  const v=el.value.trim();
+  if(!v)return;
+  // Accept d/m/yy, dd/mm/yyyy, or ISO yyyy-mm-dd
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v)){el.value=fmtDate(v);return;}
+  // auto-insert slashes: 25022025 → 25/02/2025
+  const digits=v.replace(/\D/g,'');
+  if(digits.length===8)el.value=digits.slice(0,2)+'/'+digits.slice(2,4)+'/'+digits.slice(4);
+}
 function fmtDate(iso){if(!iso)return'';const[y,m,d]=iso.split('-');return`${d}/${m}/${y}`;}
 function toIso(dmy){if(!dmy)return'';if(dmy.includes('-'))return dmy;const[d,m,y]=dmy.split('/');return`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;}
 
@@ -565,6 +611,10 @@ function migrateCoffee(c){
 }
 function getLatestEntry(c){return c.entries[c.entries.length-1];}
 function getBestRating(c){return c.entries.length?Math.max(...c.entries.map(e=>e.rating||0)):0;}
+function getLatestDate(c){
+  const dates=c.entries.map(e=>e.date||'').filter(Boolean).sort();
+  return dates.length?dates[dates.length-1]:'0000-00-00';
+}
 
 // LOGIN
 async function loadExistingAccounts(){
@@ -575,14 +625,73 @@ async function loadExistingAccounts(){
   }catch(e){}
 }
 function setLoginName(n){document.getElementById('login-name').value=n;doLogin();}
+// ── PIN SYSTEM ──
+let _pendingPinUser = null; // user waiting for PIN entry
+
+// Called after name lookup — if account has PIN, show entry modal
 async function doLogin(){
   const name=document.getElementById('login-name').value.trim();
   if(!name){document.getElementById('login-err').textContent='Please enter your name.';return;}
   const btn=document.getElementById('login-btn');btn.textContent='Loading…';btn.disabled=true;
   document.getElementById('login-err').textContent='';
-  try{const user=await api('POST','/login',{name});currentUser=user;document.getElementById('nav-avatar').innerHTML=avatarEl(user.name,22,10);document.getElementById('nav-name').textContent=user.name;await refreshData();showScreen('screen-main');renderMain();}
-  catch(e){document.getElementById('login-err').textContent='Error: '+e.message;}
+  try{
+    // First check if account exists and has a PIN
+    const checkResp=await fetch('/api/check-pin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+    const checkData=await checkResp.json();
+    if(checkData.hasPin){
+      // Show PIN entry modal
+      _pendingPinUser=name;
+      document.getElementById('pin-entry-desc').textContent=`Enter the PIN for "${checkData.displayName}"`;
+      document.getElementById('pin-entry-input').value='';
+      document.getElementById('pin-entry-err').textContent='';
+      document.getElementById('pin-entry-bg').classList.add('open');
+      btn.textContent='Enter journal →';btn.disabled=false;
+      setTimeout(()=>document.getElementById('pin-entry-input').focus(),50);
+      return;
+    }
+    await completeLogin(name,null);
+  }catch(e){document.getElementById('login-err').textContent='Error: '+e.message;}
   finally{btn.textContent='Enter journal →';btn.disabled=false;}
+}
+async function submitPinEntry(){
+  const pin=document.getElementById('pin-entry-input').value.trim();
+  if(pin.length!==4||!/^\d{4}$/.test(pin)){document.getElementById('pin-entry-err').textContent='Enter a 4-digit PIN';return;}
+  try{
+    await completeLogin(_pendingPinUser,pin);
+    document.getElementById('pin-entry-bg').classList.remove('open');
+  }catch(e){document.getElementById('pin-entry-err').textContent=e.message;}
+}
+function cancelPinEntry(){
+  document.getElementById('pin-entry-bg').classList.remove('open');
+  _pendingPinUser=null;
+}
+async function completeLogin(name,pin){
+  const user=await api('POST','/login',{name,pin});
+  currentUser=user;
+  document.getElementById('nav-avatar').innerHTML=avatarEl(user.name,22,10);
+  document.getElementById('nav-name').textContent=user.name;
+  await refreshData();showScreen('screen-main');renderMain();
+}
+
+// Set/change PIN from user menu
+function openSetPin(){
+  document.getElementById('pin-input').value='';
+  document.getElementById('pin-confirm').value='';
+  document.getElementById('pin-err').textContent='';
+  document.getElementById('pin-modal-bg').classList.add('open');
+  setTimeout(()=>document.getElementById('pin-input').focus(),50);
+}
+function closePinModal(){document.getElementById('pin-modal-bg').classList.remove('open');}
+async function savePin(){
+  const pin=document.getElementById('pin-input').value.trim();
+  const confirm=document.getElementById('pin-confirm').value.trim();
+  if(pin&&(pin.length!==4||!/^\d{4}$/.test(pin))){document.getElementById('pin-err').textContent='PIN must be exactly 4 digits';return;}
+  if(pin!==confirm){document.getElementById('pin-err').textContent='PINs do not match';return;}
+  try{
+    await api('POST',`/account/${currentUser.key}/pin`,{pin:pin||null});
+    closePinModal();
+    toast(pin?'PIN set ✓':'PIN removed');
+  }catch(e){document.getElementById('pin-err').textContent='Failed: '+e.message;}
 }
 function logout(){currentUser=null;myData=null;community={};tagGroupCache=null;activeFlavours=[];document.getElementById('login-name').value='';document.getElementById('login-err').textContent='';loadExistingAccounts();showScreen('screen-login');}
 async function confirmDeleteProfile(){
@@ -622,7 +731,7 @@ function renderProfileGrid(){
   document.getElementById('sort-name').classList.toggle('active',profileSort==='name');
   let list=[...a.coffees];
   if(profileTagFilter!=='all')list=list.filter(c=>(c.tags||[]).includes(profileTagFilter));
-  if(profileSort==='rating')list.sort((a,b)=>getBestRating(b)-getBestRating(a));else list.sort((a,b)=>a.name.localeCompare(b.name));
+  if(profileSort==='rating')list.sort((a,b)=>getBestRating(b)-getBestRating(a));else if(profileSort==='name')list.sort((a,b)=>a.name.localeCompare(b.name));else list.sort((a,b)=>getLatestDate(b).localeCompare(getLatestDate(a)));
   document.getElementById('profile-grid').innerHTML=renderCards(list,false,myNames,false,{},profileUserKey);
 }
 function setProfileSort(s,el){profileSort=s;document.querySelectorAll('#profile-overlay .pill[id^=sort]').forEach(p=>p.classList.remove('active'));if(el)el.classList.add('active');renderProfileGrid();}
@@ -659,6 +768,7 @@ function renderMyCoffees(){
     const matchFlavours=activeFlavours.length===0||activeFlavours.some(t=>(c.tags||[]).includes(t));
     return matchQ&&matchType&&matchFlavours;
   });
+  list.sort((a,b)=>getLatestDate(b).localeCompare(getLatestDate(a)));
   document.getElementById('my-grid').innerHTML=renderCards(list,true,null,true,buildOthersMap(),currentUser.key);
 }
 function esc(s){return s.replace(/'/g,"\\'");}
@@ -855,7 +965,7 @@ function openModal(coffee,entryIdx,addingNew){
   document.getElementById('f-private-notes').value=isEdit?(entry.privateNotes||''):'';
   document.getElementById('f-notes').value=isEdit?(entry.notes||''):'';
   currentRating=isEdit?(entry.rating||0):0;
-  document.getElementById('f-date').value=isEdit&&entry.date?entry.date:new Date().toISOString().slice(0,10);
+  document.getElementById('f-date').value=isEdit&&entry.date?fmtDate(entry.date):fmtDate(new Date().toISOString().slice(0,10));
   pendingTags=coffee?[...(coffee.tags||[])]:[];
   updateStars();renderSelectedTags();
   document.getElementById('suggestion-box').style.display='none';

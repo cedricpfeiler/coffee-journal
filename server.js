@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 const DB_FILE = path.join(__dirname, 'db.json');
 
 // Anthropic API key — set env var or paste your key here
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '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';
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || 'YOUR_API_KEY_HERE';
 
 // ── DB helpers ──────────────────────────────────────────────────
 function loadDb() {
@@ -62,16 +62,34 @@ const server = http.createServer(async (req, res) => {
 
   // ── POST /api/login  { name }
   // Creates account if new, returns account (without other users' grind data)
-  if (req.method === 'POST' && pathname === '/api/login') {
+  // ── POST /api/check-pin { name } — returns whether account has a PIN
+  if (req.method === 'POST' && pathname === '/api/check-pin') {
     const { name } = await readBody(req);
     if (!name || !name.trim()) { json(res, 400, { error: 'Name required' }); return; }
     const db = loadDb();
     const key = name.trim().toLowerCase();
+    const acct = db.accounts[key];
+    json(res, 200, { hasPin: !!(acct && acct.pin), displayName: acct ? acct.name : name.trim() });
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/login') {
+    const { name, pin } = await readBody(req);
+    if (!name || !name.trim()) { json(res, 400, { error: 'Name required' }); return; }
+    const db = loadDb();
+    const key = name.trim().toLowerCase();
     if (!db.accounts[key]) {
+      // New account — create it
       db.accounts[key] = { name: name.trim(), coffees: [] };
       saveDb(db);
     }
-    json(res, 200, { name: db.accounts[key].name, key });
+    const acct = db.accounts[key];
+    // If account has a PIN, verify it
+    if (acct.pin) {
+      if (!pin) { json(res, 401, { error: 'PIN required' }); return; }
+      if (String(pin) !== String(acct.pin)) { json(res, 401, { error: 'Incorrect PIN' }); return; }
+    }
+    json(res, 200, { name: acct.name, key });
     return;
   }
 
@@ -182,6 +200,24 @@ const server = http.createServer(async (req, res) => {
     proxyReq.on('error', e => json(res, 500, { error: e.message }));
     proxyReq.write(postData);
     proxyReq.end();
+    return;
+  }
+
+  // ── POST /api/account/:key/pin { pin }
+  const pinMatch = pathname.match(/^\/api\/account\/([^/]+)\/pin$/);
+  if (req.method === 'POST' && pinMatch) {
+    const key = decodeURIComponent(pinMatch[1]).toLowerCase();
+    const { pin } = await readBody(req);
+    const db = loadDb();
+    if (!db.accounts[key]) { json(res, 404, { error: 'Not found' }); return; }
+    if (pin) {
+      if (!/^\d{4}$/.test(String(pin))) { json(res, 400, { error: 'PIN must be 4 digits' }); return; }
+      db.accounts[key].pin = String(pin);
+    } else {
+      delete db.accounts[key].pin;
+    }
+    saveDb(db);
+    json(res, 200, { ok: true });
     return;
   }
 
