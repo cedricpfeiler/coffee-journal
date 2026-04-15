@@ -1017,8 +1017,22 @@ async function saveCoffee(){
   try{
     if(isNew){
       const name=document.getElementById('f-name').value.trim();if(!name){alert('Please enter a coffee name');return;}
-      const obj={name,roaster:document.getElementById('f-roaster').value.trim(),country:document.getElementById('f-country').value.trim(),type:document.getElementById('f-type').value,process:document.getElementById('f-process').value,tags:[...pendingTags],photo:photoData,entries:[newEntry]};
-      const created=await api('POST',`/account/${currentUser.key}/coffees`,obj);if(!created.entries)created.entries=[newEntry];myData.coffees.push(created);
+      // If a coffee with this name already exists, add as a new entry instead
+      const existing=myData.coffees.find(x=>x.name.toLowerCase()===name.toLowerCase());
+      if(existing){
+        if(document.getElementById('f-roaster').value.trim())existing.roaster=document.getElementById('f-roaster').value.trim();
+        if(document.getElementById('f-country').value.trim())existing.country=document.getElementById('f-country').value.trim();
+        if(document.getElementById('f-type').value)existing.type=document.getElementById('f-type').value;
+        if(document.getElementById('f-process').value)existing.process=document.getElementById('f-process').value;
+        if(pendingTags.length)existing.tags=[...new Set([...existing.tags,...pendingTags])];
+        if(photoData)existing.photo=photoData;
+        existing.entries.push(newEntry);
+        await api('PUT',`/account/${currentUser.key}/coffees/${existing.id}`,existing);
+        toast('Added as new entry to existing coffee ✓');
+      } else {
+        const obj={name,roaster:document.getElementById('f-roaster').value.trim(),country:document.getElementById('f-country').value.trim(),type:document.getElementById('f-type').value,process:document.getElementById('f-process').value,tags:[...pendingTags],photo:photoData,entries:[newEntry]};
+        const created=await api('POST',`/account/${currentUser.key}/coffees`,obj);if(!created.entries)created.entries=[newEntry];myData.coffees.push(created);
+      }
     }else{
       const c=myData.coffees.find(x=>x.id===editingCoffeeId);if(!c)return;
       // Update coffee-level fields
