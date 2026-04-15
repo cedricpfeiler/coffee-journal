@@ -5,7 +5,9 @@ const path = require('path');
 const url = require('url');
 
 const PORT = process.env.PORT || 3000;
-const DB_FILE = path.join(__dirname, 'db.json');
+const DB_FILE = process.env.RAILWAY_VOLUME_MOUNT_PATH
+  ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'db.json')
+  : path.join(__dirname, 'db.json');
 
 // Anthropic API key — set env var or paste your key here
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || 'YOUR_API_KEY_HERE';
