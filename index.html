@@ -238,10 +238,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="login-box">
     <h1>Coffee Journal</h1>
     <p class="login-tagline">Your shared coffee community</p>
+    <div id="pick-label" style="display:none;align-items:center;gap:10px;margin-bottom:1rem;color:var(--text3);font-size:13px"><div style="flex:1;height:1px;background:var(--border)"></div>Pick an account<div style="flex:1;height:1px;background:var(--border)"></div></div>
+    <div id="existing-accounts"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin:1.25rem 0 1rem;color:var(--text3);font-size:13px">
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      Create an account
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+    </div>
     <input type="text" id="login-name" placeholder="Your name…" maxlength="30" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="off" autocorrect="off">
     <button class="login-btn" id="login-btn" onclick="doLogin()">Enter journal →</button>
     <div class="login-err" id="login-err"></div>
-    <div id="existing-accounts"></div>
   </div>
 </div>
 
@@ -620,8 +626,8 @@ function getLatestDate(c){
 async function loadExistingAccounts(){
   try{const comm=await api('GET','/community');const keys=Object.keys(comm);const el=document.getElementById('existing-accounts');
     if(!keys.length){el.innerHTML='';return;}
-    el.innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin:1.5rem 0 1rem;color:var(--text3);font-size:13px"><div style="flex:1;height:1px;background:var(--border)"></div>or pick an account<div style="flex:1;height:1px;background:var(--border)"></div></div>`
-      +keys.map(k=>{const a=comm[k];return`<div class="acct-row" onclick="setLoginName('${a.name.replace(/'/g,"\\'")}')">${avatarEl(a.name)}<span class="acct-name">${a.name}</span><span class="acct-count">${a.coffees.length} coffee${a.coffees.length!==1?'s':''}</span></div>`;}).join('');
+    document.getElementById("pick-label").style.display=keys.length?"flex":"none";
+    el.innerHTML=keys.map(k=>{const a=comm[k];return`<div class="acct-row" onclick="setLoginName('${a.name.replace(/'/g,"\\'")}')">${avatarEl(a.name)}<span class="acct-name">${a.name}</span><span class="acct-count">${a.coffees.length} coffee${a.coffees.length!==1?'s':''}</span></div>`;}).join('');
   }catch(e){}
 }
 function setLoginName(n){document.getElementById('login-name').value=n;doLogin();}
