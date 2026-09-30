@@ -61,10 +61,10 @@ const newId = () => Date.now() * 1000 + Math.floor(Math.random() * 1000);
 
 // Remove private fields (grind settings + private notes) before sharing
 function publicCoffee(c) {
-  const { grindSize, grindTime, privateNotes, ...pub } = c;
+  const { grindSize, grindTime, doseIn, doseOut, privateNotes, ...pub } = c;
   return {
     ...pub,
-    entries: (c.entries || []).map(({ grindSize, grindTime, privateNotes, ...e }) => e),
+    entries: (c.entries || []).map(({ grindSize, grindTime, doseIn, doseOut, privateNotes, ...e }) => e),
   };
 }
 

@@ -414,6 +414,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="field"><label>Grind size</label><input type="text" id="f-grind-size" placeholder="e.g. 18 / medium-fine"></div>
       <div class="field"><label>Grind time (sec)</label><input type="text" id="f-grind-time" placeholder="e.g. 11,5"></div>
     </div>
+    <div class="sec-div">Dose <span class="private-badge">🔒 Only visible to you</span></div>
+    <div class="field-row">
+      <div class="field"><label>In (g beans)</label><input type="text" id="f-dose-in" inputmode="decimal" placeholder="e.g. 18"></div>
+      <div class="field"><label>Out (g liquid)</label><input type="text" id="f-dose-out" inputmode="decimal" placeholder="e.g. 36"></div>
+    </div>
     <div class="sec-div">Private notes <span class="private-badge">🔒 Only visible to you</span></div>
     <div class="field"><textarea id="f-private-notes" placeholder="Personal notes, reminders, brew tips…"></textarea></div>
     <div class="sec-div">Tasting notes</div>
@@ -919,6 +924,11 @@ function renderDeckModal(){
   (c.tags||[]).forEach(t=>chips.push(`<span class="deck-chip green">${t}</span>`));
   if(e.place)details.push(['Where bought',e.place]);if(priceDisplay)details.push(['Price / 100g',priceDisplay]);
   if(e.grindSize)details.push(['Grind size',e.grindSize]);if(e.grindTime)details.push(['Grind time',e.grindTime+'s']);
+  if(e.doseIn||e.doseOut){
+    const di=parseFloat(String(e.doseIn||'').replace(',','.')),dout=parseFloat(String(e.doseOut||'').replace(',','.'));
+    const ratio=(di>0&&dout>0)?` (1:${(dout/di).toFixed(1)})`:'';
+    details.push(['Dose',`${e.doseIn||'?'}g → ${e.doseOut||'?'}g${ratio}`]);
+  }
   document.getElementById('deck-body').innerHTML=`
     ${chips.length?`<div class="deck-chips">${chips.join('')}</div>`:''}
     ${e.rating?`<div class="deck-stars">${'★'.repeat(e.rating)}${'☆'.repeat(5-e.rating)}</div>`:''}
@@ -968,6 +978,8 @@ function openModal(coffee,entryIdx,addingNew){
   priceCurrency=(entry&&entry.priceCurrency)||'EUR';setPriceCurr(priceCurrency);
   document.getElementById('f-grind-size').value=entry?(entry.grindSize||''):''; // carry over
   document.getElementById('f-grind-time').value=isEdit?(entry.grindTime||''):'';
+  document.getElementById('f-dose-in').value=entry?(entry.doseIn||''):'';
+  document.getElementById('f-dose-out').value=entry?(entry.doseOut||''):'';
   document.getElementById('f-private-notes').value=isEdit?(entry.privateNotes||''):'';
   document.getElementById('f-notes').value=isEdit?(entry.notes||''):'';
   currentRating=isEdit?(entry.rating||0):0;
@@ -1036,7 +1048,7 @@ function useSuggestion(key){
 // SAVE/DELETE
 async function saveCoffee(){
   const isNew=!editingCoffeeId,isEdit=!isNew&&editingEntryIdx!==null&&!isAddingEntry;
-  const newEntry={idx:Date.now(),place:document.getElementById('f-place').value.trim(),price:document.getElementById('f-price').value.trim(),priceCurrency,grindSize:document.getElementById('f-grind-size').value.trim(),grindTime:document.getElementById('f-grind-time').value.trim(),privateNotes:document.getElementById('f-private-notes').value.trim(),notes:document.getElementById('f-notes').value.trim(),rating:currentRating,date:toIso(document.getElementById('f-date').value)||new Date().toISOString().slice(0,10)};
+  const newEntry={idx:Date.now(),place:document.getElementById('f-place').value.trim(),price:document.getElementById('f-price').value.trim(),priceCurrency,grindSize:document.getElementById('f-grind-size').value.trim(),grindTime:document.getElementById('f-grind-time').value.trim(),doseIn:document.getElementById('f-dose-in').value.trim(),doseOut:document.getElementById('f-dose-out').value.trim(),privateNotes:document.getElementById('f-private-notes').value.trim(),notes:document.getElementById('f-notes').value.trim(),rating:currentRating,date:toIso(document.getElementById('f-date').value)||new Date().toISOString().slice(0,10)};
   try{
     if(isNew){
       const name=document.getElementById('f-name').value.trim();if(!name){alert('Please enter a coffee name');return;}
@@ -1077,7 +1089,7 @@ async function deleteEntry(){
   else{if(!confirm('Delete this entry?'))return;c.entries.splice(editingEntryIdx,1);await api('PUT',`/account/${currentUser.key}/coffees/${c.id}`,c);}
   community[currentUser.key]={name:currentUser.name,coffees:myData.coffees.map(publicCoffee)};closeModal();renderMain();toast('Deleted');
 }
-function publicCoffee(c){return{id:c.id,name:c.name,roaster:c.roaster,country:c.country,type:c.type,process:c.process,tags:c.tags,photo:c.photo,entries:(c.entries||[]).map(e=>{const{grindSize,grindTime,privateNotes,...pub}=e;return pub;})};}
+function publicCoffee(c){return{id:c.id,name:c.name,roaster:c.roaster,country:c.country,type:c.type,process:c.process,tags:c.tags,photo:c.photo,entries:(c.entries||[]).map(e=>{const{grindSize,grindTime,doseIn,doseOut,privateNotes,...pub}=e;return pub;})};}
 
 // INIT
 fetchRate();
