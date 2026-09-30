@@ -1,12 +1,14 @@
 {
   "name": "coffee-journal",
-  "version": "1.0.0",
-  "description": "A shared coffee journal web app",
+  "version": "2.0.0",
+  "private": true,
+  "description": "A shared coffee journal",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node --env-file=.env server.js"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=20"
   }
 }

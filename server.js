@@ -1,229 +1,185 @@
+// Coffee Journal server — data stored in Supabase (Postgres)
 const http = require('http');
-const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const url = require('url');
 
 const PORT = process.env.PORT || 3000;
-const DB_FILE = process.env.RAILWAY_VOLUME_MOUNT_PATH
-  ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'db.json')
-  : path.join(__dirname, 'db.json');
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
+const SUPABASE_KEY = process.env.SUPABASE_KEY || '';
 
-// Anthropic API key — set env var or paste your key here
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || 'YOUR_API_KEY_HERE';
-
-// ── DB helpers ──────────────────────────────────────────────────
-function loadDb() {
-  if (!fs.existsSync(DB_FILE)) return { accounts: {}, nextId: 1 };
-  try { return JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); } catch(e) { return { accounts: {}, nextId: 1 }; }
-}
-function saveDb(db) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('Missing SUPABASE_URL or SUPABASE_KEY environment variables.');
+  process.exit(1);
 }
 
-// ── HTTP helpers ────────────────────────────────────────────────
+// ── Supabase REST helpers ────────────────────────────────────────
+function sbHeaders(extra = {}) {
+  const h = { apikey: SUPABASE_KEY, 'Content-Type': 'application/json', ...extra };
+  // Legacy keys are JWTs and also go in Authorization; new sb_ keys do not
+  if (!SUPABASE_KEY.startsWith('sb_')) h.Authorization = `Bearer ${SUPABASE_KEY}`;
+  return h;
+}
+async function sb(method, query, body, prefer) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/accounts${query}`, {
+    method,
+    headers: sbHeaders(prefer ? { Prefer: prefer } : {}),
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Supabase ${res.status}: ${text}`);
+  return text ? JSON.parse(text) : null;
+}
+const eq = key => `?key=eq.${encodeURIComponent(key)}`;
+
+async function getAccount(key) {
+  const rows = await sb('GET', `${eq(key)}&select=*`);
+  return rows && rows[0] ? rows[0] : null;
+}
+async function getAllAccounts() {
+  return (await sb('GET', '?select=key,name,coffees&order=created_at.asc')) || [];
+}
+async function createAccount(key, name) {
+  try {
+    const rows = await sb('POST', '', { key, name, coffees: [] }, 'return=representation');
+    return rows[0];
+  } catch (e) {
+    const existing = await getAccount(key); // created at the same moment by someone else
+    if (existing) return existing;
+    throw e;
+  }
+}
+async function updateAccount(key, fields) {
+  await sb('PATCH', eq(key), fields, 'return=minimal');
+}
+async function deleteAccount(key) {
+  await sb('DELETE', eq(key));
+}
+
+// ── Helpers ──────────────────────────────────────────────────────
+const keyOf = name => name.trim().toLowerCase();
+const newId = () => Date.now() * 1000 + Math.floor(Math.random() * 1000);
+
+// Remove private fields (grind settings + private notes) before sharing
+function publicCoffee(c) {
+  const { grindSize, grindTime, privateNotes, ...pub } = c;
+  return {
+    ...pub,
+    entries: (c.entries || []).map(({ grindSize, grindTime, privateNotes, ...e }) => e),
+  };
+}
+
 function readBody(req) {
-  return new Promise((res, rej) => {
+  return new Promise((resolve, reject) => {
     let body = '';
-    req.on('data', d => body += d);
-    req.on('end', () => { try { res(JSON.parse(body)); } catch(e) { res({}); } });
-    req.on('error', rej);
+    req.on('data', d => (body += d));
+    req.on('end', () => { try { resolve(body ? JSON.parse(body) : {}); } catch (e) { resolve({}); } });
+    req.on('error', reject);
   });
 }
 function json(res, status, data) {
-  const body = JSON.stringify(data);
-  res.writeHead(status, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' });
-  res.end(body);
-}
-function serveFile(res, filePath, contentType) {
-  fs.readFile(filePath, (err, data) => {
-    if (err) { res.writeHead(404); res.end('Not found'); return; }
-    res.writeHead(200, { 'Content-Type': contentType });
-    res.end(data);
-  });
+  if (res.headersSent) return;
+  res.writeHead(status, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(data));
 }
 
-// ── Strip private fields from a coffee object ───────────────────
-function publicCoffee(c) {
-  const { grindSize, grindTime, ...pub } = c;
-  return pub;
-}
+// ── Routes ───────────────────────────────────────────────────────
+async function handle(req, res) {
+  const { pathname } = new URL(req.url, 'http://localhost');
+  let m;
 
-// ── Router ──────────────────────────────────────────────────────
-const server = http.createServer(async (req, res) => {
-  const parsed = url.parse(req.url, true);
-  const pathname = parsed.pathname;
-
-  // CORS preflight
-  if (req.method === 'OPTIONS') { json(res, 204, {}); return; }
-
-  // Serve frontend
-  if (req.method === 'GET' && pathname === '/') {
-    serveFile(res, path.join(__dirname, 'index.html'), 'text/html'); return;
+  if (req.method === 'GET' && (pathname === '/' || pathname === '/index.html')) {
+    fs.readFile(path.join(__dirname, 'index.html'), (err, data) => {
+      if (err) { res.writeHead(404); res.end('Not found'); return; }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(data);
+    });
+    return;
   }
 
-  // ── POST /api/login  { name }
-  // Creates account if new, returns account (without other users' grind data)
-  // ── POST /api/check-pin { name } — returns whether account has a PIN
   if (req.method === 'POST' && pathname === '/api/check-pin') {
     const { name } = await readBody(req);
-    if (!name || !name.trim()) { json(res, 400, { error: 'Name required' }); return; }
-    const db = loadDb();
-    const key = name.trim().toLowerCase();
-    const acct = db.accounts[key];
-    json(res, 200, { hasPin: !!(acct && acct.pin), displayName: acct ? acct.name : name.trim() });
-    return;
+    if (!name || !name.trim()) return json(res, 400, { error: 'Name required' });
+    const acct = await getAccount(keyOf(name));
+    return json(res, 200, { hasPin: !!(acct && acct.pin), displayName: acct ? acct.name : name.trim() });
   }
 
   if (req.method === 'POST' && pathname === '/api/login') {
     const { name, pin } = await readBody(req);
-    if (!name || !name.trim()) { json(res, 400, { error: 'Name required' }); return; }
-    const db = loadDb();
-    const key = name.trim().toLowerCase();
-    if (!db.accounts[key]) {
-      // New account — create it
-      db.accounts[key] = { name: name.trim(), coffees: [] };
-      saveDb(db);
-    }
-    const acct = db.accounts[key];
-    // If account has a PIN, verify it
+    if (!name || !name.trim()) return json(res, 400, { error: 'Name required' });
+    const key = keyOf(name);
+    const acct = (await getAccount(key)) || (await createAccount(key, name.trim()));
     if (acct.pin) {
-      if (!pin) { json(res, 401, { error: 'PIN required' }); return; }
-      if (String(pin) !== String(acct.pin)) { json(res, 401, { error: 'Incorrect PIN' }); return; }
+      if (!pin) return json(res, 401, { error: 'PIN required' });
+      if (String(pin) !== String(acct.pin)) return json(res, 401, { error: 'Incorrect PIN' });
     }
-    json(res, 200, { name: acct.name, key });
-    return;
+    return json(res, 200, { name: acct.name, key });
   }
 
-  // ── GET /api/community
-  // Returns all accounts with public coffee data only (no grind settings)
   if (req.method === 'GET' && pathname === '/api/community') {
-    const db = loadDb();
-    const community = {};
-    for (const [k, a] of Object.entries(db.accounts)) {
-      community[k] = { name: a.name, coffees: a.coffees.map(publicCoffee) };
+    const out = {};
+    for (const a of await getAllAccounts()) {
+      out[a.key] = { name: a.name, coffees: (a.coffees || []).map(publicCoffee) };
     }
-    json(res, 200, community);
-    return;
+    return json(res, 200, out);
   }
 
-  // ── GET /api/account/:key
-  // Returns full account data (including grind) — only the owner should call this
-  const accountMatch = pathname.match(/^\/api\/account\/([^/]+)$/);
-  if (req.method === 'GET' && accountMatch) {
-    const key = decodeURIComponent(accountMatch[1]).toLowerCase();
-    const db = loadDb();
-    if (!db.accounts[key]) { json(res, 404, { error: 'Not found' }); return; }
-    json(res, 200, db.accounts[key]);
-    return;
-  }
-
-  // ── POST /api/account/:key/coffees  (add)
-  const addMatch = pathname.match(/^\/api\/account\/([^/]+)\/coffees$/);
-  if (req.method === 'POST' && addMatch) {
-    const key = decodeURIComponent(addMatch[1]).toLowerCase();
-    const db = loadDb();
-    if (!db.accounts[key]) { json(res, 404, { error: 'Not found' }); return; }
-    const body = await readBody(req);
-    body.id = db.nextId++;
-    db.accounts[key].coffees.push(body);
-    saveDb(db);
-    json(res, 200, body);
-    return;
-  }
-
-  // ── PUT /api/account/:key/coffees/:id  (edit)
-  const editMatch = pathname.match(/^\/api\/account\/([^/]+)\/coffees\/(\d+)$/);
-  if (req.method === 'PUT' && editMatch) {
-    const key = decodeURIComponent(editMatch[1]).toLowerCase();
-    const id = parseInt(editMatch[2]);
-    const db = loadDb();
-    if (!db.accounts[key]) { json(res, 404, { error: 'Not found' }); return; }
-    const body = await readBody(req);
-    const i = db.accounts[key].coffees.findIndex(c => c.id === id);
-    if (i < 0) { json(res, 404, { error: 'Coffee not found' }); return; }
-    body.id = id;
-    db.accounts[key].coffees[i] = body;
-    saveDb(db);
-    json(res, 200, body);
-    return;
-  }
-
-  // ── DELETE /api/account/:key/coffees/:id
-  if (req.method === 'DELETE' && editMatch) {
-    const key = decodeURIComponent(editMatch[1]).toLowerCase();
-    const id = parseInt(editMatch[2]);
-    const db = loadDb();
-    if (!db.accounts[key]) { json(res, 404, { error: 'Not found' }); return; }
-    db.accounts[key].coffees = db.accounts[key].coffees.filter(c => c.id !== id);
-    saveDb(db);
-    json(res, 200, { ok: true });
-    return;
-  }
-
-  // ── DELETE /api/account/:key
-  const delAcctMatch = pathname.match(/^\/api\/account\/([^/]+)$/);
-  if (req.method === 'DELETE' && delAcctMatch) {
-    const key = decodeURIComponent(delAcctMatch[1]).toLowerCase();
-    const db = loadDb();
-    if (!db.accounts[key]) { json(res, 404, { error: 'Not found' }); return; }
-    delete db.accounts[key];
-    saveDb(db);
-    json(res, 200, { ok: true });
-    return;
-  }
-
-  // ── POST /api/ai  — proxy to Anthropic (keeps API key server-side)
-  if (req.method === 'POST' && pathname === '/api/ai') {
-    if (!ANTHROPIC_API_KEY || ANTHROPIC_API_KEY === 'YOUR_API_KEY_HERE') {
-      json(res, 503, { error: 'No API key configured in server.js' }); return;
+  if ((m = pathname.match(/^\/api\/account\/([^/]+)$/))) {
+    const key = decodeURIComponent(m[1]).toLowerCase();
+    if (req.method === 'GET') {
+      const a = await getAccount(key);
+      if (!a) return json(res, 404, { error: 'Not found' });
+      return json(res, 200, { name: a.name, coffees: a.coffees || [] });
     }
-    const body = await readBody(req);
-    const postData = JSON.stringify(body);
-    const options = {
-      hostname: 'api.anthropic.com',
-      path: '/v1/messages',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'Content-Length': Buffer.byteLength(postData),
-      },
-    };
-    const proxyReq = https.request(options, proxyRes => {
-      let data = '';
-      proxyRes.on('data', chunk => data += chunk);
-      proxyRes.on('end', () => {
-        res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
-        res.end(data);
-      });
-    });
-    proxyReq.on('error', e => json(res, 500, { error: e.message }));
-    proxyReq.write(postData);
-    proxyReq.end();
-    return;
+    if (req.method === 'DELETE') {
+      await deleteAccount(key);
+      return json(res, 200, { ok: true });
+    }
   }
 
-  // ── POST /api/account/:key/pin { pin }
-  const pinMatch = pathname.match(/^\/api\/account\/([^/]+)\/pin$/);
-  if (req.method === 'POST' && pinMatch) {
-    const key = decodeURIComponent(pinMatch[1]).toLowerCase();
+  if ((m = pathname.match(/^\/api\/account\/([^/]+)\/pin$/)) && req.method === 'POST') {
+    const key = decodeURIComponent(m[1]).toLowerCase();
     const { pin } = await readBody(req);
-    const db = loadDb();
-    if (!db.accounts[key]) { json(res, 404, { error: 'Not found' }); return; }
-    if (pin) {
-      if (!/^\d{4}$/.test(String(pin))) { json(res, 400, { error: 'PIN must be 4 digits' }); return; }
-      db.accounts[key].pin = String(pin);
-    } else {
-      delete db.accounts[key].pin;
-    }
-    saveDb(db);
-    json(res, 200, { ok: true });
-    return;
+    if (!(await getAccount(key))) return json(res, 404, { error: 'Not found' });
+    if (pin && !/^\d{4}$/.test(String(pin))) return json(res, 400, { error: 'PIN must be 4 digits' });
+    await updateAccount(key, { pin: pin ? String(pin) : null });
+    return json(res, 200, { ok: true });
   }
 
-  res.writeHead(404); res.end('Not found');
-});
+  if ((m = pathname.match(/^\/api\/account\/([^/]+)\/coffees$/)) && req.method === 'POST') {
+    const key = decodeURIComponent(m[1]).toLowerCase();
+    const a = await getAccount(key);
+    if (!a) return json(res, 404, { error: 'Not found' });
+    const coffee = await readBody(req);
+    coffee.id = newId();
+    await updateAccount(key, { coffees: [...(a.coffees || []), coffee] });
+    return json(res, 200, coffee);
+  }
 
-server.listen(PORT, () => console.log(`Coffee Journal running on http://localhost:${PORT}`));
+  if ((m = pathname.match(/^\/api\/account\/([^/]+)\/coffees\/(\d+)$/))) {
+    const key = decodeURIComponent(m[1]).toLowerCase();
+    const id = Number(m[2]);
+    const a = await getAccount(key);
+    if (!a) return json(res, 404, { error: 'Not found' });
+    const coffees = a.coffees || [];
+    if (req.method === 'PUT') {
+      const i = coffees.findIndex(c => c.id === id);
+      if (i < 0) return json(res, 404, { error: 'Coffee not found' });
+      const body = await readBody(req);
+      body.id = id;
+      coffees[i] = body;
+      await updateAccount(key, { coffees });
+      return json(res, 200, body);
+    }
+    if (req.method === 'DELETE') {
+      await updateAccount(key, { coffees: coffees.filter(c => c.id !== id) });
+      return json(res, 200, { ok: true });
+    }
+  }
+
+  res.writeHead(404);
+  res.end('Not found');
+}
+
+http
+  .createServer((req, res) => handle(req, res).catch(e => { console.error(e); json(res, 500, { error: e.message }); }))
+  .listen(PORT, () => console.log(`Coffee Journal running on http://localhost:${PORT} (data: Supabase)`));
